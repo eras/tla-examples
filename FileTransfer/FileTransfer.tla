@@ -165,7 +165,7 @@ Next ==
   \/ TransferStart
   \/ TransferDo
   \/ TransferFinished
-  \/ Stutter
+\*  \/ Stutter
 
 Init ==
   /\ peer_files    = GenerateFiles({})
