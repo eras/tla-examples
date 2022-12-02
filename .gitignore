@@ -1,3 +1,5 @@
 *~
 *_TTrace_*.tla
 states
+.vscode/
+*.out
