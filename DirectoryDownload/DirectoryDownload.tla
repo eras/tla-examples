@@ -13,7 +13,7 @@ CONSTANTS
 
 VARIABLES
    remote_files                 (* The files the remote has *)
-   , local_files                (* The files the client knows of *)
+   , local_files                (* The files the local knows of *)
    , scanner_state              (* State of the scanner *)
    , transfers                  (* On-going transfers *)
 
