@@ -178,9 +178,9 @@ Next ==
   \/ TransferFinished
 
 Init ==
-  /\ local_files   = [file_id \in FileId |-> <<>>]
-  /\ local_transfers     = [transfer_id \in TransferId |-> <<>>]
-  /\ local_state = "idle"
+  /\ local_files     = [file_id \in FileId |-> <<>>]
+  /\ local_transfers = [transfer_id \in TransferId |-> <<>>]
+  /\ local_state     = "idle"
 
 (* Properties *)
 
