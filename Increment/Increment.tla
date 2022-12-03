@@ -4,38 +4,38 @@ CONSTANTS N, P
 
 (* --algorithm IncrementAlg
 
-variables u = 1 ;
+variables n = 1;
 
 process Proc \in 1..P
 begin
-  comp : while u < N do
-  incr :   u := u + 1;
-           assert u <= N;
+  comp : while n < N do
+  incr :   n := n + 1;
+           assert n <= N;
          end while;
 end process
 
 end algorithm *)
 
-\* BEGIN TRANSLATION (chksum(pcal) = "b1cfbdb9" /\ chksum(tla) = "a30cbb63")
-VARIABLES u, pc
+\* BEGIN TRANSLATION (chksum(pcal) = "a6f1d42c" /\ chksum(tla) = "fc6522d9")
+VARIABLES n, pc
 
-vars == << u, pc >>
+vars == << n, pc >>
 
 ProcSet == (1..P)
 
 Init == (* Global variables *)
-        /\ u = 1
+        /\ n = 1
         /\ pc = [self \in ProcSet |-> "comp"]
 
 comp(self) == /\ pc[self] = "comp"
-              /\ IF u < N
+              /\ IF n < N
                     THEN /\ pc' = [pc EXCEPT ![self] = "incr"]
                     ELSE /\ pc' = [pc EXCEPT ![self] = "Done"]
-              /\ u' = u
+              /\ n' = n
 
 incr(self) == /\ pc[self] = "incr"
-              /\ u' = u + 1
-              /\ Assert(u' <= N, 
+              /\ n' = n + 1
+              /\ Assert(n' <= N, 
                         "Failure of assertion at line 13, column 12.")
               /\ pc' = [pc EXCEPT ![self] = "comp"]
 
