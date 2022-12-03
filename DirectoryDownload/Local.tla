@@ -55,12 +55,9 @@ HasFileId == {file_id \in FileId: local_files[file_id] # <<>>}
 
 FreeFileId == CHOOSE file_id \in FileId: local_files[file_id] = <<>>
 
-\* Set of file names we are locally aware of
-LocalFileNames == {local_files[file_id].remote_file.name: file_id \in HasFileId}
-
-\* Are we locally aware of this file in the remote?
-FoundLocally(remote_name) == \E local_file_name \in LocalFileNames: remote_name.name = local_file_name
-
+\* Unused transfer slots are the empty tuple <<>>
+FreeTransferId == {transfer_id \in TransferId: local_transfers[transfer_id] = <<>>}
+ActiveTransferId == {transfer_id \in TransferId: local_transfers[transfer_id] # <<>>}
 ----
 (* Scanning *)
 

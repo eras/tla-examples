@@ -8,9 +8,6 @@ CONSTANTS
    , MaxFileSize            \* Needed for Records
    , MaxConcurrentTransfers \* Needed for Records
 
-VARIABLES
-   local_transfers          \* Needed for Records
-
 LOCAL INSTANCE Records
 
 RequestListFiles ==

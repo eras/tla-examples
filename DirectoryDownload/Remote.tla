@@ -17,7 +17,6 @@ VARIABLES
    , remote_state               (* The files the remote has *)
    , chan_local_to_remote       (* Channel from local to remote *)
    , chan_remote_to_local       (* Channel from remote to local *)
-   , local_transfers            (* Needed by Records *)
 
 LOCAL INSTANCE Records
 LOCAL INSTANCE Messages

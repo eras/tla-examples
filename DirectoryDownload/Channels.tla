@@ -11,9 +11,6 @@ VARIABLES
    chan_local_to_remote      (* Channel from local to remote *)
  , chan_remote_to_local      (* Channel from remote to local *)
 
-VARIABLES
-   local_transfers          \* Needed for Messages
-
 LOCAL INSTANCE Messages
 
 chans == <<chan_local_to_remote, chan_remote_to_local>>
