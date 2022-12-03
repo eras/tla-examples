@@ -1,17 +1,12 @@
 ---- MODULE HelloWorld ---------------------------------------------------------
-(* Documentation *)
-
 VARIABLES words
-
 vars == <<words>>
 
 AllWords == {"Hello", "Shitty", "World"}
 
-TypeOK ==
-  /\ words \in SUBSET AllWords
+TypeOK == words \in SUBSET AllWords
 
-Init ==
-  /\ words = {}
+Init == words = {}
 
 RemoveWord ==
   /\ \E word \in words: words' = words \ {word}
@@ -27,9 +22,6 @@ Next ==
 Spec ==
   /\ Init
   /\ [][Next]_vars
-
 --------------------------------------------------------------------------------
-
 HelloConstraint == {"Hello", "World"} # words
-
 ================================================================================
