@@ -101,7 +101,7 @@ HandleBlockRequest1 ==
 
 HandleBlockRequest2 ==
    /\ Len(remote_send_queue) > 0
-   /\ LET index == CHOOSE index \in DOMAIN remote_send_queue: TRUE IN
+   /\ \E index \in DOMAIN remote_send_queue:
       /\ RemoteToLocal!Send(remote_send_queue[index])
       /\ remote_send_queue' = SeqRemoveIndex(remote_send_queue, index)
       /\ UNCHANGED<<chan_local_to_remote, remote_files, remote_state>>
