@@ -25,43 +25,52 @@ LOCAL INSTANCE Channels
 
 vars == <<local_files, local_state, local_transfers>>
 
+(* Used from Main to express this module does not modify variables *)
 UnchangedVars == UNCHANGED vars
 
 ----
 \* Local information about the remote files
 LocalFile == [remote_file : RemoteFile,
               transfer_id : {0} \cup TransferId,
-              state       : {"ignore", "waiting-transfer", "transferring", "transferred"}]
+              state       : {"waiting-transfer", (* waiting to be transferred *)
+                             "transferring",     (* transferring *)
+                             "transferred"}]     (* transferred *)
 
 \* An on-going transfer of a file
-Transfer == [ remote_file : RemoteFile,
-              state       : {"pending-request", "transfer", "finished", "requested-block"},
-              local_size  : FileSize,
+Transfer == [ remote_file : RemoteFile,         (* information about the file we're transferring *)
+              state       : {"transferring",    (* waiting to be requested from remote *)
+                             "finished"},       (* transfer is complete *)
+              request_next: FileSize,           (* current size of the local file *)
+              blocks_received : FileSize,       (* the number of received blocks *)
               file_id     : FileId ]
 
 \* TypeOK invariants
-LocalFileTypeOK    == local_files \in [FileId -> {<<>>} \cup LocalFile]
-LocalStateTypeOK   == local_state \in {"idle", "running", "transferring"}
-TransfersTypeOK    == local_transfers \in [TransferId -> {<<>>} \cup Transfer]
+LocalFilesTypeOK     == local_files \in [FileId -> {<<>>} \cup LocalFile]
+LocalStateTypeOK     == local_state \in {"idle", "running", "transferring"}
+LocalTransfersTypeOK == local_transfers \in [TransferId -> {<<>>} \cup Transfer]
 
+(* Assert is used to more easily determine which of the TypeOK constraints failed *)
 TypeOK ==
-  /\ Assert(LocalFileTypeOK, <<"LocalFileTypeOK", local_files>>)
+  /\ Assert(LocalFilesTypeOK, <<"LocalFilesTypeOK", local_files>>)
   /\ Assert(LocalStateTypeOK, <<"LocalStateTypeOK", local_state>>)
-  /\ Assert(TransfersTypeOK, <<"TransfersTypeOK", local_transfers>>)
+  /\ Assert(LocalTransfersTypeOK, <<"LocalTransfersTypeOK", local_transfers>>)
 
 ----
 \* Set of files we are locally aware of
 HasFileId == {file_id \in FileId: local_files[file_id] # <<>>}
 
+\* Get an index for an empty entry in local_files
 FreeFileId == CHOOSE file_id \in FileId: local_files[file_id] = <<>>
 
-\* Unused transfer slots are the empty tuple <<>>
+\* Unused transfer slots are the empty tuple <<>>; get the set of unused transfer ids
 FreeTransferId == {transfer_id \in TransferId: local_transfers[transfer_id] = <<>>}
+
+\* Get the set of active transfer ids
 ActiveTransferId == {transfer_id \in TransferId: local_transfers[transfer_id] # <<>>}
 ----
 (* Scanning *)
 
-(* If scanner is idle, start scanning *)
+(* If scanner is idle, start running and send the list_files request to remote *)
 ScanStart(OtherUnchanged) ==
    /\ local_state = "idle"
    /\ LocalToRemote!Send([ message |-> "list_files" ])
@@ -70,6 +79,7 @@ ScanStart(OtherUnchanged) ==
    /\ UNCHANGED<<local_transfers, local_files>>
    /\ OtherUnchanged
 
+(* Receive and process list_files-responses from the remote *)
 ScanReceive(OtherUnchanged) ==
    /\ local_state = "running"
    /\ \E remote_file \in RemoteFile:
@@ -85,6 +95,7 @@ ScanReceive(OtherUnchanged) ==
       /\ UNCHANGED<<local_transfers, local_state>>
       /\ OtherUnchanged
 
+(* Receive and process end_list_files-response from the remote *)
 ScanFinished(OtherUnchanged) ==
   /\ RemoteToLocal!Recv([ message |-> "end_list_files" ])
   /\ LocalToRemote!UnchangedVars
@@ -97,8 +108,8 @@ HasFreeTransferSlot == \E transfer_id \in TransferId: local_transfers[transfer_i
 (* Are there files that are waiting for transfer? *)
 HasFileWaitingTransfer == \E file_id \in HasFileId: local_files[file_id].state = "waiting-transfer"
 
-(* If the scanner has transferring, there are free transfer slots and there are files waiting transfer,
- * pick one such file and start the transfer. *)
+(* If there are local files waiting to be transferred and we have space in the transfer queue,
+ * start transferring one such file by adding a new entry to local_transfers *)
 TransferStart(OtherUnchanged) ==
    /\ \E file_id \in HasFileId: local_files[file_id].state = "waiting-transfer"
    /\ \E transfer_id \in FreeTransferId:
@@ -106,48 +117,48 @@ TransferStart(OtherUnchanged) ==
       LET local_file == local_files[file_id] IN
       /\ local_transfers' = [
             local_transfers EXCEPT ![transfer_id] = [
-               remote_file |-> local_file.remote_file,
-               state       |-> "pending-request",
-               local_size  |-> 0,
-               file_id     |-> file_id
+               remote_file  |-> local_file.remote_file,
+               state        |-> "transferring",
+               request_next |-> 0,
+               blocks_received |-> 0,
+               file_id      |-> file_id
             ]
          ]
-      /\ local_files' = [local_files EXCEPT ![file_id] = [@ EXCEPT !.transfer_id     = transfer_id,
-                                                                   !.state           = "transferring"]]
+      /\ local_files' = [local_files EXCEPT ![file_id].transfer_id = transfer_id,
+                                            ![file_id].state       = "transferring"]
       /\ RemoteToLocal!UnchangedVars
       /\ LocalToRemote!UnchangedVars
       /\ UNCHANGED<<local_state, chans>>
       /\ OtherUnchanged
 
-(* If there are pending-request local_transfers, transfer one unit of data. If the file has already transferred
- * all the data, mark it finished.  *)
+(* If there are pending-request local_transfers and the file is not completely transferred,
+ * request one unit of data. If the file is completely transferred, mark the transfer finished. *)
 TransferRequest(OtherUnchanged) ==
    /\ \E transfer_id \in ActiveTransferId:
          LET transfer == local_transfers[transfer_id] IN
-         /\ transfer.state = "pending-request"
-         /\ IF transfer.local_size < transfer.remote_file.size
-            THEN /\ local_transfers' = [local_transfers EXCEPT ![transfer_id] = [@ EXCEPT !.state = "requested-block"]]
-                 /\ LocalToRemote!Send([ message |-> "file_block",
-                                         name    |-> transfer.remote_file.name,
-                                         block   |-> transfer.local_size])
-            ELSE /\ local_transfers' = [local_transfers EXCEPT ![transfer_id] = [@ EXCEPT !.state = "finished"]]
-                 /\ LocalToRemote!UnchangedVars
+         /\ transfer.state = "transferring"
+         /\ transfer.request_next < transfer.remote_file.size
+         /\ local_transfers' = [local_transfers EXCEPT ![transfer_id].request_next = @ + 1]
+         /\ LocalToRemote!Send([ message |-> "file_block",
+                                 name    |-> transfer.remote_file.name,
+                                 block   |-> transfer.request_next ])
          /\ RemoteToLocal!UnchangedVars
          /\ UNCHANGED<<local_files, local_state>>
          /\ OtherUnchanged
 
+(* Receive a block of data from the remote *)
 TransferReceive(OtherUnchanged) ==
    /\ \E transfer_id \in ActiveTransferId:
       \E block \in BlockId:
          LET transfer == local_transfers[transfer_id] IN
-         /\ transfer.state = "requested-block"
-         /\ RemoteToLocal!Recv([ message |-> "file_block",
-                                 name    |-> transfer.remote_file.name,
-                                 block   |-> block ])
-         /\ local_transfers' = [local_transfers EXCEPT ![transfer_id] = [
-               @ EXCEPT !.local_size = Max({block + 1, transfer.local_size}),
-                        !.state      = "pending-request"
-            ]]
+         /\ transfer.state = "transferring"
+         /\ IF transfer.blocks_received = transfer.remote_file.size
+            THEN /\ local_transfers' = [local_transfers EXCEPT ![transfer_id].state = "finished"]
+                 /\ RemoteToLocal!UnchangedVars
+            ELSE /\ RemoteToLocal!Recv([ message |-> "file_block",
+                                         name    |-> transfer.remote_file.name,
+                                         block   |-> block ])
+                 /\ local_transfers' = [local_transfers EXCEPT ![transfer_id].blocks_received = @ + 1]
          /\ LocalToRemote!UnchangedVars
          /\ UNCHANGED<<local_state, local_files>>
          /\ OtherUnchanged
@@ -159,16 +170,15 @@ TransferFinished(OtherUnchanged) ==
       LET file_id == transfer.file_id IN
       /\ transfer.state = "finished"
       /\ local_transfers' = [local_transfers EXCEPT ![transfer_id] = <<>>]
-      /\ local_files' = [local_files EXCEPT ![file_id] = [@ EXCEPT !.transfer_id = 0,
-                                                                   !.state       = "transferred"]]
+      /\ local_files' = [local_files EXCEPT ![file_id].transfer_id = 0,
+                                            ![file_id].state       = "transferred"]
       /\ RemoteToLocal!UnchangedVars
       /\ LocalToRemote!UnchangedVars
       /\ UNCHANGED<<local_state>>
       /\ OtherUnchanged
 
 ----
-\* For TLSD
-
+\* State description for TLSD
 State ==
   [ files_ready |-> Cardinality({file_id \in FileId:
                                  /\ local_files[file_id] # <<>>
@@ -177,24 +187,24 @@ State ==
 (* State *)
 
 Next(OtherUnchanged) ==
-  \/ ScanStart(OtherUnchanged)
-  \/ ScanReceive(OtherUnchanged)
-  \/ ScanFinished(OtherUnchanged)
-  \/ TransferStart(OtherUnchanged)
-  \/ TransferRequest(OtherUnchanged)
-  \/ TransferReceive(OtherUnchanged)
-  \/ TransferFinished(OtherUnchanged)
+   \/ ScanStart(OtherUnchanged)                  (* Start scannning *)
+   \/ ScanReceive(OtherUnchanged)                (* Receive scan results *)
+   \/ ScanFinished(OtherUnchanged)               (* Finish scanning *)
+   \/ TransferStart(OtherUnchanged)              (* Start transfer of one file; acquire transfer slot *)
+   \/ TransferRequest(OtherUnchanged)            (* Request a block for one file *)
+   \/ TransferReceive(OtherUnchanged)            (* Receive a block for one file *)
+   \/ TransferFinished(OtherUnchanged)           (* Clean up a transfer; release transfer slot *)
 
 Init ==
-  /\ local_files     = [file_id \in FileId |-> <<>>]
-  /\ local_transfers = [transfer_id \in TransferId |-> <<>>]
-  /\ local_state     = "idle"
+   /\ local_files     = [file_id \in FileId |-> <<>>]
+   /\ local_transfers = [transfer_id \in TransferId |-> <<>>]
+   /\ local_state     = "idle"
 
 (* Properties *)
 
 Spec ==
-  /\ Init
-  /\ [][Next(TRUE)]_vars
-  /\ WF_vars(Next(TRUE))
+   /\ Init
+   /\ [][Next(TRUE)]_vars
+   /\ WF_vars(Next(TRUE))
 
 ================================================================================

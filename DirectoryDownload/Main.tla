@@ -9,6 +9,7 @@ CONSTANTS
    , MaxFileSize
    , MaxConcurrentTransfers
    , MaxSendQueue
+   , ForceStateTraces
 
 VARIABLES
    remote_files                 (* The files the remote has *)
@@ -49,12 +50,13 @@ AllFilesAreTransferred ==
    /\ \A transfer_id \in TransferId:
       local_transfers[transfer_id] = <<>>
 
+(* Is everything transferred and queues empty? *)
 Finished ==
    /\ AllFilesAreTransferred
    /\ Channels!QuiescentChannels
    /\ Remote!Quiescent
    /\ UNCHANGED<<vars>>
-   (* /\ Assert(FALSE, "Force state trace") *)
+   /\ Assert(~ForceStateTraces, "Force state trace")
 
 Next ==
    \/ Local!ScanStart(Remote!UnchangedVars)
@@ -68,24 +70,28 @@ Next ==
    \/ Remote!HandleListFilesDo(Local!UnchangedVars)
    \/ Remote!HandleBlockRequest(Local!UnchangedVars)
    \/ Remote!HandleSendQueue(Local!UnchangedVars)
-   \/ Finished                  (* stutter on finish *)
+   \/ Finished                  (* stutter on finish, instead of deadlock *)
 
 Spec ==
    /\ Init
    /\ [][Next]_vars
    /\ WF_<<local_transfers, remote_send_queue, chan_remote_to_local, chan_local_to_remote>>(Next)
 
+(* After starting the system, at some point we end up having all files transferred *)
 EventuallyAllFilesAreTransferred ==
    Init => <> AllFilesAreTransferred
 
+(* Messages currently in the flight, for the benefit of tlsd *)
 AllMessages ==
    UNION({{{<<"local", 1>>} \X {<<"remote", 1>>} \X Channels!LocalToRemote!Sending}
         , {{<<"remote", 1>>} \X {<<"local", 1>>} \X Channels!RemoteToLocal!Sending}})
 
+(* An expression of some state, to display in the TLSD output *)
 State ==
    [ local |-> <<Local!State>>,
      remote |-> <<Remote!State>> ]
 
+(* TLSD output mapping *)
 AliasMessages ==
    [lane_order_json |-> ToJson(<<"local", "remote">>),
     messages_json   |-> ToJson(AllMessages),

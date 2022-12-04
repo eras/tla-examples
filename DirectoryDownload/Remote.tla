@@ -30,14 +30,18 @@ UnchangedVars == UNCHANGED vars
 
 ----
 \* TypeOK invariants
+
+\* remote_send_queue contains outbound messages
 RemoteSendQueueOK ==
    /\ \A x \in Image(remote_send_queue): x \in MsgRemoteToLocal
    /\ Len(remote_send_queue) <= MaxSendQueue
 
+\* Remote can either be listing files or not; it's always able to respond to block requests
 RemoteStateOK ==
    remote_state \in [ listing_files: BOOLEAN,
                       listed_file_index: {0} \cup FileId ]
 
+\* remote_files conforms to the RemoteFile structure
 RemoteFileTypeOK     ==
    /\ \A remote_file \in Image(remote_files): remote_file \in RemoteFile
    /\ ~\E remote_file1 \in Image(remote_files):
@@ -45,6 +49,7 @@ RemoteFileTypeOK     ==
       /\ remote_file1.name = remote_file2.name
       /\ remote_file1.size # remote_file2.size
 
+\* Uses Assert to more easily determine why TypeOK fails
 TypeOK ==
    /\ Assert(RemoteSendQueueOK, <<"RemoteSendQueueOK", remote_send_queue>>)
    /\ Assert(RemoteStateOK, <<"RemoteStateOK", remote_state>>)
@@ -54,44 +59,47 @@ TypeOK ==
 \* Generate uniquely named file of different names and varying sizes
 RECURSIVE GenerateFiles(_)
 GenerateFiles(files) ==
-  IF \E file \in RemoteFile: file.name \notin {file2.name: file2 \in files}
-  THEN LET file == CHOOSE file \in RemoteFile:
-                   /\ file.name \notin {file2.name: file2 \in files}
-                   /\ \lnot \E file2 \in files: file.size <= file2.size
-       IN GenerateFiles({file} \union files)
-  ELSE files
+   IF \E file \in RemoteFile: file.name \notin {file2.name: file2 \in files}
+   THEN LET file == CHOOSE file \in RemoteFile:
+                    /\ file.name \notin {file2.name: file2 \in files}
+                    /\ \lnot \E file2 \in files: file.size <= file2.size
+        IN GenerateFiles({file} \union files)
+   ELSE files
 
 ----
 (* Scanning *)
 
-(* If scanner is idle, start scanning *)
+(* Process the request to list files by enablign listed_files and resetting listed_file_index *)
 HandleListFilesStart(OtherUnchanged) ==
-  /\ \lnot remote_state.listing_files
-  /\ LocalToRemote!Recv([ message |-> "list_files" ])
-  /\ remote_state' = [remote_state EXCEPT !.listing_files = TRUE
-                                        , !.listed_file_index = 0]
-  /\ UNCHANGED<<remote_send_queue, remote_files, chan_remote_to_local>>
-  /\ OtherUnchanged
+   /\ \lnot remote_state.listing_files
+   /\ LocalToRemote!Recv([ message |-> "list_files" ])
+   /\ remote_state' = [remote_state EXCEPT !.listing_files = TRUE
+                                         , !.listed_file_index = 0]
+   /\ UNCHANGED<<remote_send_queue, remote_files, chan_remote_to_local>>
+   /\ OtherUnchanged
 
+(* Enqueue a message to remote_send_queue, if there is room there *)
 EnqueueSend(message) ==
-  /\ Len(remote_send_queue) < MaxSendQueue
-  /\ remote_send_queue' = remote_send_queue \o <<message>>
+   /\ Len(remote_send_queue) < MaxSendQueue
+   /\ remote_send_queue' = remote_send_queue \o <<message>>
 
+(* If we are listing files and have files left to send info about, enqueue a message about one such file *)
 HandleListFilesDo(OtherUnchanged) ==
-  /\ remote_state.listing_files
-  /\ IF remote_state.listed_file_index < Len(remote_files)
-     THEN
-        LET remote_file == remote_files[remote_state.listed_file_index + 1] IN
-        /\ EnqueueSend([ message |-> "list_files",
-                         file    |-> remote_file ])
-        /\ remote_state' = [remote_state EXCEPT !.listed_file_index = @ + 1]
-     ELSE
-        /\ EnqueueSend([ message |-> "end_list_files" ])
-        /\ remote_state' = [remote_state EXCEPT !.listing_files = FALSE
-                                              , !.listed_file_index = 0]
-  /\ UNCHANGED<<remote_files, chan_local_to_remote, chan_remote_to_local>>
-  /\ OtherUnchanged
+   /\ remote_state.listing_files
+   /\ IF remote_state.listed_file_index < Len(remote_files)
+      THEN
+         LET remote_file == remote_files[remote_state.listed_file_index + 1] IN
+         /\ EnqueueSend([ message |-> "list_files",
+                          file    |-> remote_file ])
+         /\ remote_state' = [remote_state EXCEPT !.listed_file_index = @ + 1]
+      ELSE
+         /\ EnqueueSend([ message |-> "end_list_files" ])
+         /\ remote_state' = [remote_state EXCEPT !.listing_files = FALSE
+                                               , !.listed_file_index = 0]
+   /\ UNCHANGED<<chan_remote_to_local, chan_local_to_remote, remote_files>>
+   /\ OtherUnchanged
 
+(* If a request for a block comes, then add a response to remote_send_queue *)
 HandleBlockRequest(OtherUnchanged) ==
    \E block \in BlockId:
    \E name \in FileName:
@@ -104,6 +112,7 @@ HandleBlockRequest(OtherUnchanged) ==
       /\ UNCHANGED<<chan_remote_to_local, remote_files, remote_state>>
       /\ OtherUnchanged
 
+(* If there is data in the send queue, send it local *)
 HandleSendQueue(OtherUnchanged) ==
    /\ Len(remote_send_queue) > 0
    /\ \E index \in DOMAIN remote_send_queue:
@@ -113,21 +122,22 @@ HandleSendQueue(OtherUnchanged) ==
       /\ OtherUnchanged
 
 Next(OtherUnchanged) ==
-  \/ HandleListFilesStart(OtherUnchanged)
-  \/ HandleListFilesDo(OtherUnchanged)
-  \/ HandleBlockRequest(OtherUnchanged)
-  \/ HandleSendQueue(OtherUnchanged)
+   \/ HandleListFilesStart(OtherUnchanged)
+   \/ HandleListFilesDo(OtherUnchanged)
+   \/ HandleBlockRequest(OtherUnchanged)
+   \/ HandleSendQueue(OtherUnchanged)
 
+(* We are quiescent if none of the actions we have can be taken *)
 Quiescent == ~ENABLED(Next(TRUE))
 
 \* For TLSD
 State ==
-  [ queue_len |-> Len(remote_send_queue) ]
+   [ queue_len |-> Len(remote_send_queue) ]
 
 Init ==
-  /\ remote_files = SeqOfSet(GenerateFiles({}))
-  /\ remote_state = [ listing_files     |-> FALSE,
-                      listed_file_index |-> 0 ]
-  /\ remote_send_queue = <<>>
+   /\ remote_files = SeqOfSet(GenerateFiles({}))
+   /\ remote_state = [ listing_files     |-> FALSE,
+                       listed_file_index |-> 0 ]
+   /\ remote_send_queue = <<>>
 
 ================================================================================
