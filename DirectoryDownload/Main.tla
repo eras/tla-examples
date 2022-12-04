@@ -72,7 +72,7 @@ Next ==
 Spec ==
    /\ Init
    /\ [][Next]_vars
-   /\ WF_vars(Next)
+   /\ WF_<<local_transfers, chan_remote_to_local, chan_local_to_remote>>(Next)
 
 EventuallyAllFilesAreTransferred ==
    Init => <> AllFilesAreTransferred
