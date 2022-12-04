@@ -11,24 +11,30 @@ CONSTANTS
    , NumFileNames               (* Used by Records *)
    , MaxFileSize                (* Used by Records *)
    , MaxConcurrentTransfers     (* Used by Records *)
+   , MaxSendQueue               (* Maximum number of transfers we can queue *)
 
 VARIABLES
    remote_files                 (* The files the remote has *)
-   , remote_state               (* The files the remote has *)
+   , remote_state               (* The state of the remote *)
+   , remote_send_queue          (* Blocks pending send *)
    , chan_local_to_remote       (* Channel from local to remote *)
    , chan_remote_to_local       (* Channel from remote to local *)
 
 LOCAL INSTANCE Records
 LOCAL INSTANCE Messages
 LOCAL INSTANCE Channels
-LOCAL INSTANCE Util             (* SeqOfSet *)
+LOCAL INSTANCE Util             (* SeqOfSet, SeqRemoveIndex *)
 
-vars == <<remote_state, remote_files>>
+vars == <<remote_send_queue, remote_state, remote_files>>
 
 UnchangedVars == UNCHANGED vars
 
 ----
 \* TypeOK invariants
+RemoteSendQueueOK ==
+   /\ \A x \in Image(remote_send_queue): x \in RespondFileBlock
+   /\ Len(remote_send_queue) <= MaxSendQueue
+
 RemoteStateOK ==
    remote_state \in [ listing_files: BOOLEAN,
                       listed_file_index: {0} \cup FileId ]
@@ -41,8 +47,9 @@ RemoteFileTypeOK     ==
       /\ remote_file1.size # remote_file2.size
 
 TypeOK ==
-   /\ RemoteStateOK
-   /\ RemoteFileTypeOK
+   /\ Assert(RemoteSendQueueOK, <<"RemoteSendQueueOK", remote_send_queue>>)
+   /\ Assert(RemoteStateOK, <<"RemoteStateOK", remote_state>>)
+   /\ Assert(RemoteFileTypeOK, <<"RemoteFileTypeOK", remote_files>>)
 
 ----
 \* Generate uniquely named file of different names and varying sizes
@@ -64,7 +71,7 @@ HandleListFilesStart ==
   /\ LocalToRemote!Recv([ message |-> "list_files" ])
   /\ remote_state' = [remote_state EXCEPT !.listing_files = TRUE
                                         , !.listed_file_index = 0]
-  /\ UNCHANGED<<remote_files, chan_remote_to_local>>
+  /\ UNCHANGED<<remote_send_queue, remote_files, chan_remote_to_local>>
 
 HandleListFilesDo ==
   /\ remote_state.listing_files
@@ -78,27 +85,37 @@ HandleListFilesDo ==
         /\ RemoteToLocal!Send([ message |-> "end_list_files" ])
         /\ remote_state' = [remote_state EXCEPT !.listing_files = FALSE
                                               , !.listed_file_index = 0]
-  /\ UNCHANGED<<remote_files, chan_local_to_remote>>
+  /\ UNCHANGED<<remote_send_queue, remote_files, chan_local_to_remote>>
 
-HandleBlockRequest ==
+HandleBlockRequest1 ==
    \E block \in BlockId:
    \E name \in FileName:
+      /\ Len(remote_send_queue) < MaxSendQueue
       /\ LocalToRemote!Recv([ message |-> "file_block",
                               name    |-> name,
                               block   |-> block ])
-      /\ RemoteToLocal!Send([ message |-> "file_block",
-                              name    |-> name,
-                              block   |-> block ])
-      /\ UNCHANGED<<remote_files, remote_state>>
+      /\ remote_send_queue' = remote_send_queue \o <<[ message |-> "file_block",
+                                                       name    |-> name,
+                                                       block   |-> block ]>>
+      /\ UNCHANGED<<chan_remote_to_local, remote_files, remote_state>>
+
+HandleBlockRequest2 ==
+   /\ Len(remote_send_queue) > 0
+   /\ LET index == CHOOSE index \in DOMAIN remote_send_queue: TRUE IN
+      /\ RemoteToLocal!Send(remote_send_queue[index])
+      /\ remote_send_queue' = SeqRemoveIndex(remote_send_queue, index)
+      /\ UNCHANGED<<chan_local_to_remote, remote_files, remote_state>>
 
 Next ==
   \/ HandleListFilesStart
   \/ HandleListFilesDo
-  \/ HandleBlockRequest
+  \/ HandleBlockRequest1
+  \/ HandleBlockRequest2
 
 Init ==
   /\ remote_files = SeqOfSet(GenerateFiles({}))
   /\ remote_state = [ listing_files     |-> FALSE,
                       listed_file_index |-> 0 ]
+  /\ remote_send_queue = <<>>
 
 ================================================================================

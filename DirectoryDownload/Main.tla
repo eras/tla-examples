@@ -2,16 +2,19 @@
 (* Documentation *)
 --------------------------------------------------------------------------------
 LOCAL INSTANCE Json             (* ToJson *)
+LOCAL INSTANCE TLC
 
 CONSTANTS
    NumFiles
    , NumFileNames
    , MaxFileSize
    , MaxConcurrentTransfers
+   , MaxSendQueue
 
 VARIABLES
    remote_files                 (* The files the remote has *)
    , remote_state               (* Remote state *)
+   , remote_send_queue          (* Blocks pending send *)
    , local_files                (* The files the local knows of *)
    , local_state                (* State of the local scanner/transfer system *)
    , local_transfers            (* On-going transfers *)

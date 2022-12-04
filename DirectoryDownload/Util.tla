@@ -2,6 +2,7 @@
 (* Documentation *)
 --------------------------------------------------------------------------------
 LOCAL INSTANCE Sequences
+LOCAL INSTANCE Naturals
 
 RECURSIVE SeqOfSet(_)
 SeqOfSet(S) ==
@@ -12,5 +13,8 @@ SeqOfSet(S) ==
    ELSE <<>>
 
 Image(F) == { F[x] : x \in DOMAIN F }
+
+SeqRemoveIndex(S, Index) ==
+   SubSeq(S, 1, Index - 1) \o SubSeq(S, Index + 1, Len(S))
 
 ================================================================================
