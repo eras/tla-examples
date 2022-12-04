@@ -83,8 +83,8 @@ AllMessages ==
         , {{<<"remote", 1>>} \X {<<"local", 1>>} \X Channels!RemoteToLocal!Sending}})
 
 State ==
-   [ local |-> <<>>,
-     remote |-> <<>> ]
+   [ local |-> <<Local!State>>,
+     remote |-> <<Remote!State>> ]
 
 AliasMessages ==
    [lane_order_json |-> ToJson(<<"local", "remote">>),

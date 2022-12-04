@@ -117,6 +117,10 @@ Next ==
 
 Quiescent == ~ENABLED(Next)
 
+\* For TLSD
+State ==
+  [ queue_len |-> Len(remote_send_queue) ]
+
 Init ==
   /\ remote_files = SeqOfSet(GenerateFiles({}))
   /\ remote_state = [ listing_files     |-> FALSE,

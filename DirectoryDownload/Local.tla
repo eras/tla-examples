@@ -161,6 +161,13 @@ TransferFinished ==
       /\ UNCHANGED<<local_state>>
 
 ----
+\* For TLSD
+
+State ==
+  [ files_ready |-> Cardinality({file_id \in FileId:
+                                 /\ local_files[file_id] # <<>>
+                                 /\ local_files[file_id].state = "transferred"}) ]
+
 (* State *)
 
 Next ==
