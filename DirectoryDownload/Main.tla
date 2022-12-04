@@ -60,7 +60,8 @@ AllFilesAreTransferred ==
 
 Finished ==
    /\ AllFilesAreTransferred
-   /\ remote_send_queue = <<>>
+   /\ Channels!QuiescentChannels
+   /\ Remote!Quiescent
    /\ UNCHANGED<<vars>>
    (* /\ Assert(FALSE, "Force state trace") *)
 
@@ -72,7 +73,7 @@ Next ==
 Spec ==
    /\ Init
    /\ [][Next]_vars
-   /\ WF_<<local_transfers, chan_remote_to_local, chan_local_to_remote>>(Next)
+   /\ WF_<<local_transfers, remote_send_queue, chan_remote_to_local, chan_local_to_remote>>(Next)
 
 EventuallyAllFilesAreTransferred ==
    Init => <> AllFilesAreTransferred

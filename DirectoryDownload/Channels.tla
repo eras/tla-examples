@@ -18,6 +18,10 @@ chans == <<chan_local_to_remote, chan_remote_to_local>>
 LocalToRemote == INSTANCE Channel WITH channel <- chan_local_to_remote, Data <- MsgLocalToRemote
 RemoteToLocal == INSTANCE Channel WITH channel <- chan_remote_to_local, Data <- MsgRemoteToLocal
 
+QuiescentChannels ==
+   /\ ~chan_local_to_remote.busy
+   /\ ~chan_remote_to_local.busy
+
 UnchangedVarsChannels ==
    /\ LocalToRemote!UnchangedVars
    /\ RemoteToLocal!UnchangedVars

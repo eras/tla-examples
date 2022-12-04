@@ -4,6 +4,7 @@
 
 LOCAL INSTANCE Naturals
 LOCAL INSTANCE TLC
+LOCAL INSTANCE FiniteSets
 LOCAL INSTANCE FiniteSetsExt
 
 CONSTANTS
@@ -41,7 +42,7 @@ Transfer == [ remote_file : RemoteFile,
 
 \* TypeOK invariants
 LocalFileTypeOK    == local_files \in [FileId -> {<<>>} \cup LocalFile]
-LocalStateTypeOK   == local_state \in {"idle", "scanning", "transferring"}
+LocalStateTypeOK   == local_state \in {"idle", "running", "transferring"}
 TransfersTypeOK    == local_transfers \in [TransferId -> {<<>>} \cup Transfer]
 
 TypeOK ==
@@ -61,16 +62,16 @@ ActiveTransferId == {transfer_id \in TransferId: local_transfers[transfer_id] # 
 ----
 (* Scanning *)
 
-(* If scanner is idle, start scanning *)
+(* If scanner is idle, start running *)
 ScanStart ==
    /\ local_state = "idle"
    /\ LocalToRemote!Send([ message |-> "list_files" ])
-   /\ local_state' = "scanning"
+   /\ local_state' = "running"
    /\ RemoteToLocal!UnchangedVars
    /\ UNCHANGED<<local_transfers, local_files>>
 
 ScanReceive ==
-   /\ local_state = "scanning"
+   /\ local_state = "running"
    /\ \E remote_file \in RemoteFile:
       /\ RemoteToLocal!Recv([ message |-> "list_files",
                               file    |-> remote_file ])
@@ -84,11 +85,9 @@ ScanReceive ==
       /\ UNCHANGED<<local_transfers, local_state>>
 
 ScanFinished ==
-  /\ local_state = "scanning"
-  /\ local_state' = "transferring"
   /\ RemoteToLocal!Recv([ message |-> "end_list_files" ])
   /\ LocalToRemote!UnchangedVars
-  /\ UNCHANGED<<local_files, local_transfers>>
+  /\ UNCHANGED<<local_state, local_files, local_transfers>>
 
 (* Are there free slots in the local_transfers structure? *)
 HasFreeTransferSlot == \E transfer_id \in TransferId: local_transfers[transfer_id] = <<>>
@@ -99,7 +98,6 @@ HasFileWaitingTransfer == \E file_id \in HasFileId: local_files[file_id].state =
 (* If the scanner has transferring, there are free transfer slots and there are files waiting transfer,
  * pick one such file and start the transfer. *)
 TransferStart ==
-   /\ local_state = "transferring"
    /\ \E file_id \in HasFileId: local_files[file_id].state = "waiting-transfer"
    /\ \E transfer_id \in FreeTransferId:
       LET file_id == CHOOSE file_id \in HasFileId: local_files[file_id].state = "waiting-transfer" IN
@@ -121,7 +119,6 @@ TransferStart ==
 (* If there are pending-request local_transfers, transfer one unit of data. If the file has already transferred
  * all the data, mark it finished.  *)
 TransferRequest ==
-   /\ local_state' = "transferring"
    /\ \E transfer_id \in ActiveTransferId:
          LET transfer == local_transfers[transfer_id] IN
          /\ transfer.state = "pending-request"
@@ -136,7 +133,6 @@ TransferRequest ==
          /\ UNCHANGED<<local_files, local_state>>
 
 TransferReceive ==
-   /\ local_state' = "transferring"
    /\ \E transfer_id \in ActiveTransferId:
       \E block \in BlockId:
          LET transfer == local_transfers[transfer_id] IN
@@ -153,7 +149,6 @@ TransferReceive ==
 
 (* If the transfer is finished, release the transfer slot and mark the local file transferred *)
 TransferFinished ==
-   /\ local_state' = "transferring"
    /\ \E transfer_id \in ActiveTransferId:
       LET transfer == local_transfers[transfer_id] IN
       LET file_id == transfer.file_id IN
