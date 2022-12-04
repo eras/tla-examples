@@ -50,6 +50,7 @@ RemoteNext ==
    /\ Remote!Next
    /\ Local!UnchangedVars
 
+(* Does the local file state match the remote file state? *)
 AllFilesAreTransferred ==
    /\ \A remote_file \in Image(remote_files):
       \E file_id \in Local!HasFileId:
@@ -58,6 +59,7 @@ AllFilesAreTransferred ==
    /\ \A transfer_id \in TransferId:
       local_transfers[transfer_id] = <<>>
 
+(* Is everything transferred and queues empty? *)
 Finished ==
    /\ AllFilesAreTransferred
    /\ Channels!QuiescentChannels
@@ -68,24 +70,28 @@ Finished ==
 Next ==
    \/ LocalNext
    \/ RemoteNext
-   \/ Finished                  (* stutter on finish *)
+   \/ Finished                  (* stutter on finish, instead of deadlock *)
 
 Spec ==
    /\ Init
    /\ [][Next]_vars
    /\ WF_<<local_transfers, remote_send_queue, chan_remote_to_local, chan_local_to_remote>>(Next)
 
+(* After starting the system, at some point we end up having all files transferred *)
 EventuallyAllFilesAreTransferred ==
    Init => <> AllFilesAreTransferred
 
+(* Messages currently in the flight, for the benefit of tlsd *)
 AllMessages ==
    UNION({{{<<"local", 1>>} \X {<<"remote", 1>>} \X Channels!LocalToRemote!Sending}
         , {{<<"remote", 1>>} \X {<<"local", 1>>} \X Channels!RemoteToLocal!Sending}})
 
+(* An expression of some state, to display in the TLSD output *)
 State ==
    [ local |-> <<Local!State>>,
      remote |-> <<Remote!State>> ]
 
+(* TLSD output mapping *)
 AliasMessages ==
    [lane_order_json |-> ToJson(<<"local", "remote">>),
     messages_json   |-> ToJson(AllMessages),
