@@ -3,7 +3,6 @@
 --------------------------------------------------------------------------------
 CONSTANTS
    NumFiles                 \* Needed for Messages
-   , NumFileNames           \* Needed for Messages
    , MaxFileSize            \* Needed for Messages
    , MaxConcurrentTransfers \* Needed for Messages
 

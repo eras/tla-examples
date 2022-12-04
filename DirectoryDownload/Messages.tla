@@ -4,7 +4,6 @@
 
 CONSTANTS
    NumFiles                 \* Needed for Records
-   , NumFileNames           \* Needed for Records
    , MaxFileSize            \* Needed for Records
    , MaxConcurrentTransfers \* Needed for Records
 

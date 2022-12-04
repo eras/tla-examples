@@ -9,7 +9,6 @@ LOCAL INSTANCE FiniteSetsExt
 
 CONSTANTS
    NumFiles
-   , NumFileNames
    , MaxFileSize
    , MaxConcurrentTransfers
 

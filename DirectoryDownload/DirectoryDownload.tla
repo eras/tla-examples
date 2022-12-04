@@ -7,7 +7,6 @@ LOCAL INSTANCE TLC
 
 CONSTANTS
    NumFiles
-   , NumFileNames
    , MaxFileSize
    , MaxConcurrentTransfers
 
@@ -27,7 +26,7 @@ TransferId == (1..MaxConcurrentTransfers)
 FreeTransferId == {transfer_id \in TransferId: transfers[transfer_id] = <<>>}
 ActiveTransferId == {transfer_id \in TransferId: transfers[transfer_id] # <<>>}
 
-FileName == {"filename"} \X (1..NumFileNames)
+FileName == {"filename"} \X (1..NumFiles)
 FileSize == (0..MaxFileSize)
 
 \* A file in the remote service is described by this

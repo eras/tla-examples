@@ -8,7 +8,6 @@ LOCAL INSTANCE Sequences
 
 CONSTANTS
    NumFiles                     (* Used by Records *)
-   , NumFileNames               (* Used by Records *)
    , MaxFileSize                (* Used by Records *)
    , MaxConcurrentTransfers     (* Used by Records *)
    , MaxSendQueue               (* Maximum number of transfers we can queue *)
