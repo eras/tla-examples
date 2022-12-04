@@ -42,14 +42,6 @@ Init ==
    /\ Local!Init
    /\ Channels!InitChannels
 
-LocalNext ==
-   /\ Local!Next
-   /\ Remote!UnchangedVars
-
-RemoteNext ==
-   /\ Remote!Next
-   /\ Local!UnchangedVars
-
 AllFilesAreTransferred ==
    /\ \A remote_file \in Image(remote_files):
       \E file_id \in Local!HasFileId:
@@ -62,11 +54,20 @@ Finished ==
    /\ AllFilesAreTransferred
    /\ remote_send_queue = <<>>
    /\ UNCHANGED<<vars>>
-   (* /\ Assert(FALSE, "Force state trace") *)
+   /\ Assert(FALSE, "Force state trace")
 
 Next ==
-   \/ LocalNext
-   \/ RemoteNext
+   \/ Local!ScanStart(Remote!UnchangedVars)
+   \/ Local!ScanReceive(Remote!UnchangedVars)
+   \/ Local!ScanFinished(Remote!UnchangedVars)
+   \/ Local!TransferStart(Remote!UnchangedVars)
+   \/ Local!TransferRequest(Remote!UnchangedVars)
+   \/ Local!TransferReceive(Remote!UnchangedVars)
+   \/ Local!TransferFinished(Remote!UnchangedVars)
+   \/ Remote!HandleListFilesStart(Local!UnchangedVars)
+   \/ Remote!HandleListFilesDo(Local!UnchangedVars)
+   \/ Remote!HandleBlockRequest1(Local!UnchangedVars)
+   \/ Remote!HandleBlockRequest2(Local!UnchangedVars)
    \/ Finished                  (* stutter on finish *)
 
 Spec ==

@@ -66,14 +66,15 @@ GenerateFiles(files) ==
 (* Scanning *)
 
 (* If scanner is idle, start scanning *)
-HandleListFilesStart ==
+HandleListFilesStart(OtherUnchanged) ==
   /\ \lnot remote_state.listing_files
   /\ LocalToRemote!Recv([ message |-> "list_files" ])
   /\ remote_state' = [remote_state EXCEPT !.listing_files = TRUE
                                         , !.listed_file_index = 0]
   /\ UNCHANGED<<remote_send_queue, remote_files, chan_remote_to_local>>
+  /\ OtherUnchanged
 
-HandleListFilesDo ==
+HandleListFilesDo(OtherUnchanged) ==
   /\ remote_state.listing_files
   /\ IF remote_state.listed_file_index < Len(remote_files)
      THEN
@@ -86,8 +87,9 @@ HandleListFilesDo ==
         /\ remote_state' = [remote_state EXCEPT !.listing_files = FALSE
                                               , !.listed_file_index = 0]
   /\ UNCHANGED<<remote_send_queue, remote_files, chan_local_to_remote>>
+  /\ OtherUnchanged
 
-HandleBlockRequest1 ==
+HandleBlockRequest1(OtherUnchanged) ==
    \E block \in BlockId:
    \E name \in FileName:
       /\ Len(remote_send_queue) < MaxSendQueue
@@ -98,19 +100,21 @@ HandleBlockRequest1 ==
                                                        name    |-> name,
                                                        block   |-> block ]>>
       /\ UNCHANGED<<chan_remote_to_local, remote_files, remote_state>>
+      /\ OtherUnchanged
 
-HandleBlockRequest2 ==
+HandleBlockRequest2(OtherUnchanged) ==
    /\ Len(remote_send_queue) > 0
    /\ \E index \in DOMAIN remote_send_queue:
       /\ RemoteToLocal!Send(remote_send_queue[index])
       /\ remote_send_queue' = SeqRemoveIndex(remote_send_queue, index)
       /\ UNCHANGED<<chan_local_to_remote, remote_files, remote_state>>
+      /\ OtherUnchanged
 
-Next ==
-  \/ HandleListFilesStart
-  \/ HandleListFilesDo
-  \/ HandleBlockRequest1
-  \/ HandleBlockRequest2
+Next(OtherUnchanged) ==
+  \/ HandleListFilesStart(OtherUnchanged)
+  \/ HandleListFilesDo(OtherUnchanged)
+  \/ HandleBlockRequest1(OtherUnchanged)
+  \/ HandleBlockRequest2(OtherUnchanged)
 
 Init ==
   /\ remote_files = SeqOfSet(GenerateFiles({}))

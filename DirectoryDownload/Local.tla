@@ -62,14 +62,15 @@ ActiveTransferId == {transfer_id \in TransferId: local_transfers[transfer_id] # 
 (* Scanning *)
 
 (* If scanner is idle, start scanning *)
-ScanStart ==
+ScanStart(OtherUnchanged) ==
    /\ local_state = "idle"
    /\ LocalToRemote!Send([ message |-> "list_files" ])
    /\ local_state' = "scanning"
    /\ RemoteToLocal!UnchangedVars
    /\ UNCHANGED<<local_transfers, local_files>>
+   /\ OtherUnchanged
 
-ScanReceive ==
+ScanReceive(OtherUnchanged) ==
    /\ local_state = "scanning"
    /\ \E remote_file \in RemoteFile:
       /\ RemoteToLocal!Recv([ message |-> "list_files",
@@ -82,13 +83,15 @@ ScanReceive ==
                         ]
       /\ LocalToRemote!UnchangedVars
       /\ UNCHANGED<<local_transfers, local_state>>
+      /\ OtherUnchanged
 
-ScanFinished ==
+ScanFinished(OtherUnchanged) ==
   /\ local_state = "scanning"
   /\ local_state' = "transferring"
   /\ RemoteToLocal!Recv([ message |-> "end_list_files" ])
   /\ LocalToRemote!UnchangedVars
   /\ UNCHANGED<<local_files, local_transfers>>
+  /\ OtherUnchanged
 
 (* Are there free slots in the local_transfers structure? *)
 HasFreeTransferSlot == \E transfer_id \in TransferId: local_transfers[transfer_id] = <<>>
@@ -98,7 +101,7 @@ HasFileWaitingTransfer == \E file_id \in HasFileId: local_files[file_id].state =
 
 (* If the scanner has transferring, there are free transfer slots and there are files waiting transfer,
  * pick one such file and start the transfer. *)
-TransferStart ==
+TransferStart(OtherUnchanged) ==
    /\ local_state = "transferring"
    /\ \E file_id \in HasFileId: local_files[file_id].state = "waiting-transfer"
    /\ \E transfer_id \in FreeTransferId:
@@ -117,10 +120,11 @@ TransferStart ==
       /\ RemoteToLocal!UnchangedVars
       /\ LocalToRemote!UnchangedVars
       /\ UNCHANGED<<local_state, chans>>
+      /\ OtherUnchanged
 
 (* If there are pending-request local_transfers, transfer one unit of data. If the file has already transferred
  * all the data, mark it finished.  *)
-TransferRequest ==
+TransferRequest(OtherUnchanged) ==
    /\ local_state' = "transferring"
    /\ \E transfer_id \in ActiveTransferId:
          LET transfer == local_transfers[transfer_id] IN
@@ -134,8 +138,9 @@ TransferRequest ==
                  /\ LocalToRemote!UnchangedVars
          /\ RemoteToLocal!UnchangedVars
          /\ UNCHANGED<<local_files, local_state>>
+         /\ OtherUnchanged
 
-TransferReceive ==
+TransferReceive(OtherUnchanged) ==
    /\ local_state' = "transferring"
    /\ \E transfer_id \in ActiveTransferId:
       \E block \in BlockId:
@@ -150,9 +155,10 @@ TransferReceive ==
             ]]
          /\ LocalToRemote!UnchangedVars
          /\ UNCHANGED<<local_state, local_files>>
+         /\ OtherUnchanged
 
 (* If the transfer is finished, release the transfer slot and mark the local file transferred *)
-TransferFinished ==
+TransferFinished(OtherUnchanged) ==
    /\ local_state' = "transferring"
    /\ \E transfer_id \in ActiveTransferId:
       LET transfer == local_transfers[transfer_id] IN
@@ -164,18 +170,19 @@ TransferFinished ==
       /\ RemoteToLocal!UnchangedVars
       /\ LocalToRemote!UnchangedVars
       /\ UNCHANGED<<local_state>>
+      /\ OtherUnchanged
 
 ----
 (* State *)
 
-Next ==
-  \/ ScanStart
-  \/ ScanReceive
-  \/ ScanFinished
-  \/ TransferStart
-  \/ TransferRequest
-  \/ TransferReceive
-  \/ TransferFinished
+Next(OtherUnchanged) ==
+  \/ ScanStart(OtherUnchanged)
+  \/ ScanReceive(OtherUnchanged)
+  \/ ScanFinished(OtherUnchanged)
+  \/ TransferStart(OtherUnchanged)
+  \/ TransferRequest(OtherUnchanged)
+  \/ TransferReceive(OtherUnchanged)
+  \/ TransferFinished(OtherUnchanged)
 
 Init ==
   /\ local_files     = [file_id \in FileId |-> <<>>]
@@ -186,7 +193,7 @@ Init ==
 
 Spec ==
   /\ Init
-  /\ [][Next]_vars
-  /\ WF_vars(Next)
+  /\ [][Next(TRUE)]_vars
+  /\ WF_vars(Next(TRUE))
 
 ================================================================================
