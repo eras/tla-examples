@@ -26,16 +26,16 @@ LOCAL INSTANCE Util             (* Image *)
 
 Channels == INSTANCE Channels
 
-chans == <<chan_local_to_remote, chan_remote_to_local>>
-
 Local == INSTANCE Local
 Remote == INSTANCE Remote
 
-vars == <<chans>>
+vars == <<remote_files, remote_state, remote_send_queue,
+          local_files, local_state, local_transfers,
+          chan_local_to_remote, chan_remote_to_local>>
 
 TypeOK ==
-   /\ Local!TypeOK
-   /\ Remote!TypeOK
+   /\ Assert(Local!TypeOK, "Local!TypeOK")
+   /\ Assert(Remote!TypeOK, "Remote!TypeOK")
 
 Init ==
    /\ Remote!Init
