@@ -6,7 +6,6 @@ LOCAL INSTANCE TLC
 
 CONSTANTS
    NumFiles
-   , NumFileNames
    , MaxFileSize
    , MaxConcurrentTransfers
    , MaxSendQueue
