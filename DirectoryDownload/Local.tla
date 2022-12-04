@@ -4,6 +4,7 @@
 
 LOCAL INSTANCE Naturals
 LOCAL INSTANCE TLC
+LOCAL INSTANCE FiniteSets
 LOCAL INSTANCE FiniteSetsExt
 
 CONSTANTS
@@ -41,7 +42,7 @@ Transfer == [ remote_file : RemoteFile,
 
 \* TypeOK invariants
 LocalFileTypeOK    == local_files \in [FileId -> {<<>>} \cup LocalFile]
-LocalStateTypeOK   == local_state \in {"idle", "scanning", "transferring"}
+LocalStateTypeOK   == local_state \in {"idle", "running", "transferring"}
 TransfersTypeOK    == local_transfers \in [TransferId -> {<<>>} \cup Transfer]
 
 TypeOK ==
@@ -65,13 +66,13 @@ ActiveTransferId == {transfer_id \in TransferId: local_transfers[transfer_id] # 
 ScanStart(OtherUnchanged) ==
    /\ local_state = "idle"
    /\ LocalToRemote!Send([ message |-> "list_files" ])
-   /\ local_state' = "scanning"
+   /\ local_state' = "running"
    /\ RemoteToLocal!UnchangedVars
    /\ UNCHANGED<<local_transfers, local_files>>
    /\ OtherUnchanged
 
 ScanReceive(OtherUnchanged) ==
-   /\ local_state = "scanning"
+   /\ local_state = "running"
    /\ \E remote_file \in RemoteFile:
       /\ RemoteToLocal!Recv([ message |-> "list_files",
                               file    |-> remote_file ])
@@ -86,11 +87,9 @@ ScanReceive(OtherUnchanged) ==
       /\ OtherUnchanged
 
 ScanFinished(OtherUnchanged) ==
-  /\ local_state = "scanning"
-  /\ local_state' = "transferring"
   /\ RemoteToLocal!Recv([ message |-> "end_list_files" ])
   /\ LocalToRemote!UnchangedVars
-  /\ UNCHANGED<<local_files, local_transfers>>
+  /\ UNCHANGED<<local_state, local_files, local_transfers>>
   /\ OtherUnchanged
 
 (* Are there free slots in the local_transfers structure? *)
@@ -102,7 +101,6 @@ HasFileWaitingTransfer == \E file_id \in HasFileId: local_files[file_id].state =
 (* If the scanner has transferring, there are free transfer slots and there are files waiting transfer,
  * pick one such file and start the transfer. *)
 TransferStart(OtherUnchanged) ==
-   /\ local_state = "transferring"
    /\ \E file_id \in HasFileId: local_files[file_id].state = "waiting-transfer"
    /\ \E transfer_id \in FreeTransferId:
       LET file_id == CHOOSE file_id \in HasFileId: local_files[file_id].state = "waiting-transfer" IN
@@ -125,7 +123,6 @@ TransferStart(OtherUnchanged) ==
 (* If there are pending-request local_transfers, transfer one unit of data. If the file has already transferred
  * all the data, mark it finished.  *)
 TransferRequest(OtherUnchanged) ==
-   /\ local_state' = "transferring"
    /\ \E transfer_id \in ActiveTransferId:
          LET transfer == local_transfers[transfer_id] IN
          /\ transfer.state = "pending-request"
@@ -141,7 +138,6 @@ TransferRequest(OtherUnchanged) ==
          /\ OtherUnchanged
 
 TransferReceive(OtherUnchanged) ==
-   /\ local_state' = "transferring"
    /\ \E transfer_id \in ActiveTransferId:
       \E block \in BlockId:
          LET transfer == local_transfers[transfer_id] IN
@@ -159,7 +155,6 @@ TransferReceive(OtherUnchanged) ==
 
 (* If the transfer is finished, release the transfer slot and mark the local file transferred *)
 TransferFinished(OtherUnchanged) ==
-   /\ local_state' = "transferring"
    /\ \E transfer_id \in ActiveTransferId:
       LET transfer == local_transfers[transfer_id] IN
       LET file_id == transfer.file_id IN
@@ -173,6 +168,13 @@ TransferFinished(OtherUnchanged) ==
       /\ OtherUnchanged
 
 ----
+\* For TLSD
+
+State ==
+  [ files_ready |-> Cardinality({file_id \in FileId:
+                                 /\ local_files[file_id] # <<>>
+                                 /\ local_files[file_id].state = "transferred"}) ]
+
 (* State *)
 
 Next(OtherUnchanged) ==

@@ -32,7 +32,7 @@ UnchangedVars == UNCHANGED vars
 ----
 \* TypeOK invariants
 RemoteSendQueueOK ==
-   /\ \A x \in Image(remote_send_queue): x \in RespondFileBlock
+   /\ \A x \in Image(remote_send_queue): x \in MsgRemoteToLocal
    /\ Len(remote_send_queue) <= MaxSendQueue
 
 RemoteStateOK ==
@@ -74,35 +74,38 @@ HandleListFilesStart(OtherUnchanged) ==
   /\ UNCHANGED<<remote_send_queue, remote_files, chan_remote_to_local>>
   /\ OtherUnchanged
 
+EnqueueSend(message) ==
+  /\ Len(remote_send_queue) < MaxSendQueue
+  /\ remote_send_queue' = remote_send_queue \o <<message>>
+
 HandleListFilesDo(OtherUnchanged) ==
   /\ remote_state.listing_files
   /\ IF remote_state.listed_file_index < Len(remote_files)
      THEN
         LET remote_file == remote_files[remote_state.listed_file_index + 1] IN
-        /\ RemoteToLocal!Send([ message |-> "list_files",
-                                 file    |-> remote_file ])
+        /\ EnqueueSend([ message |-> "list_files",
+                         file    |-> remote_file ])
         /\ remote_state' = [remote_state EXCEPT !.listed_file_index = @ + 1]
      ELSE
-        /\ RemoteToLocal!Send([ message |-> "end_list_files" ])
+        /\ EnqueueSend([ message |-> "end_list_files" ])
         /\ remote_state' = [remote_state EXCEPT !.listing_files = FALSE
                                               , !.listed_file_index = 0]
-  /\ UNCHANGED<<remote_send_queue, remote_files, chan_local_to_remote>>
+  /\ UNCHANGED<<remote_files, chan_local_to_remote, chan_remote_to_local>>
   /\ OtherUnchanged
 
-HandleBlockRequest1(OtherUnchanged) ==
+HandleBlockRequest(OtherUnchanged) ==
    \E block \in BlockId:
    \E name \in FileName:
-      /\ Len(remote_send_queue) < MaxSendQueue
       /\ LocalToRemote!Recv([ message |-> "file_block",
                               name    |-> name,
                               block   |-> block ])
-      /\ remote_send_queue' = remote_send_queue \o <<[ message |-> "file_block",
-                                                       name    |-> name,
-                                                       block   |-> block ]>>
+      /\ EnqueueSend([ message |-> "file_block",
+                       name    |-> name,
+                       block   |-> block ])
       /\ UNCHANGED<<chan_remote_to_local, remote_files, remote_state>>
       /\ OtherUnchanged
 
-HandleBlockRequest2(OtherUnchanged) ==
+HandleSendQueue(OtherUnchanged) ==
    /\ Len(remote_send_queue) > 0
    /\ \E index \in DOMAIN remote_send_queue:
       /\ RemoteToLocal!Send(remote_send_queue[index])
@@ -113,8 +116,14 @@ HandleBlockRequest2(OtherUnchanged) ==
 Next(OtherUnchanged) ==
   \/ HandleListFilesStart(OtherUnchanged)
   \/ HandleListFilesDo(OtherUnchanged)
-  \/ HandleBlockRequest1(OtherUnchanged)
-  \/ HandleBlockRequest2(OtherUnchanged)
+  \/ HandleBlockRequest(OtherUnchanged)
+  \/ HandleSendQueue(OtherUnchanged)
+
+Quiescent == ~ENABLED(Next(TRUE))
+
+\* For TLSD
+State ==
+  [ queue_len |-> Len(remote_send_queue) ]
 
 Init ==
   /\ remote_files = SeqOfSet(GenerateFiles({}))
