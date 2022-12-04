@@ -38,10 +38,10 @@ LocalFile == [remote_file : RemoteFile,
 
 \* An on-going transfer of a file
 Transfer == [ remote_file : RemoteFile,         (* information about the file we're transferring *)
-              state       : {"pending-request", (* waiting to be requested from remote *)
-                             "requested-block", (* a block has been requested from remoet *)
+              state       : {"transferring",    (* waiting to be requested from remote *)
                              "finished"},       (* transfer is complete *)
-              local_size  : FileSize,           (* current size of the local file *)
+              request_next: FileSize,           (* current size of the local file *)
+              blocks_received : FileSize,       (* the number of received blocks *)
               file_id     : FileId ]
 
 \* TypeOK invariants
@@ -114,10 +114,11 @@ TransferStart ==
       LET local_file == local_files[file_id] IN
       /\ local_transfers' = [
             local_transfers EXCEPT ![transfer_id] = [
-               remote_file |-> local_file.remote_file,
-               state       |-> "pending-request",
-               local_size  |-> 0,
-               file_id     |-> file_id
+               remote_file  |-> local_file.remote_file,
+               state        |-> "transferring",
+               request_next |-> 0,
+               blocks_received |-> 0,
+               file_id      |-> file_id
             ]
          ]
       /\ local_files' = [local_files EXCEPT ![file_id].transfer_id = transfer_id,
@@ -131,14 +132,12 @@ TransferStart ==
 TransferRequest ==
    /\ \E transfer_id \in ActiveTransferId:
          LET transfer == local_transfers[transfer_id] IN
-         /\ transfer.state = "pending-request"
-         /\ IF transfer.local_size < transfer.remote_file.size
-            THEN /\ local_transfers' = [local_transfers EXCEPT ![transfer_id] = [@ EXCEPT !.state = "requested-block"]]
-                 /\ LocalToRemote!Send([ message |-> "file_block",
-                                         name    |-> transfer.remote_file.name,
-                                         block   |-> transfer.local_size])
-            ELSE /\ local_transfers' = [local_transfers EXCEPT ![transfer_id] = [@ EXCEPT !.state = "finished"]]
-                 /\ LocalToRemote!UnchangedVars
+         /\ transfer.state = "transferring"
+         /\ transfer.request_next < transfer.remote_file.size
+         /\ local_transfers' = [local_transfers EXCEPT ![transfer_id].request_next = @ + 1]
+         /\ LocalToRemote!Send([ message |-> "file_block",
+                                 name    |-> transfer.remote_file.name,
+                                 block   |-> transfer.request_next ])
          /\ RemoteToLocal!UnchangedVars
          /\ UNCHANGED<<local_files, local_state>>
 
@@ -147,14 +146,14 @@ TransferReceive ==
    /\ \E transfer_id \in ActiveTransferId:
       \E block \in BlockId:
          LET transfer == local_transfers[transfer_id] IN
-         /\ transfer.state = "requested-block"
-         /\ RemoteToLocal!Recv([ message |-> "file_block",
-                                 name    |-> transfer.remote_file.name,
-                                 block   |-> block ])
-         /\ local_transfers' = [local_transfers EXCEPT ![transfer_id] = [
-               @ EXCEPT !.local_size = Max({block + 1, transfer.local_size}),
-                        !.state      = "pending-request"
-            ]]
+         /\ transfer.state = "transferring"
+         /\ IF transfer.blocks_received = transfer.remote_file.size
+            THEN /\ local_transfers' = [local_transfers EXCEPT ![transfer_id].state = "finished"]
+                 /\ RemoteToLocal!UnchangedVars
+            ELSE /\ RemoteToLocal!Recv([ message |-> "file_block",
+                                         name    |-> transfer.remote_file.name,
+                                         block   |-> block ])
+                 /\ local_transfers' = [local_transfers EXCEPT ![transfer_id].blocks_received = @ + 1]
          /\ LocalToRemote!UnchangedVars
          /\ UNCHANGED<<local_state, local_files>>
 
