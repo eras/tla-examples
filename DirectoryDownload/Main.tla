@@ -54,7 +54,7 @@ Finished ==
    /\ Channels!QuiescentChannels
    /\ Remote!Quiescent
    /\ UNCHANGED<<vars>>
-   /\ Assert(FALSE, "Force state trace")
+   (* /\ Assert(FALSE, "Force state trace") *)
 
 Next ==
    \/ Local!ScanStart(Remote!UnchangedVars)
