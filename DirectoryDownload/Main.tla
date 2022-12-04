@@ -9,6 +9,7 @@ CONSTANTS
    , MaxFileSize
    , MaxConcurrentTransfers
    , MaxSendQueue
+   , ForceStateTraces
 
 VARIABLES
    remote_files                 (* The files the remote has *)
@@ -62,7 +63,7 @@ Finished ==
    /\ Channels!QuiescentChannels
    /\ Remote!Quiescent
    /\ UNCHANGED<<vars>>
-   (* /\ Assert(FALSE, "Force state trace") *)
+   /\ Assert(~ForceStateTraces, "Force state trace")
 
 Next ==
    \/ LocalNext
