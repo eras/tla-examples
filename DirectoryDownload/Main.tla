@@ -58,16 +58,16 @@ AllFilesAreTransferred ==
    /\ \A transfer_id \in TransferId:
       local_transfers[transfer_id] = <<>>
 
-AllFileAreTransferredAction ==
+Finished ==
    /\ AllFilesAreTransferred
-   /\ Local!UnchangedVars
-   /\ Remote!UnchangedVars
-   /\ Channels!UnchangedVarsChannels
+   /\ remote_send_queue = <<>>
+   /\ UNCHANGED<<vars>>
+   (* /\ Assert(FALSE, "Force state trace") *)
 
 Next ==
    \/ LocalNext
    \/ RemoteNext
-   (* \/ AllFileAreTransferredAction     (\* stutter on finish *\) *)
+   \/ Finished                  (* stutter on finish *)
 
 Spec ==
    /\ Init
