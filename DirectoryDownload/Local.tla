@@ -18,10 +18,14 @@ VARIABLES
    , local_transfers            (* On-going local_transfers *)
    , chan_local_to_remote       (* Channel from local to remote *)
    , chan_remote_to_local       (* Channel from remote to local *)
+   , dialog_state               (* Dialog *)
+   , dialog_request             (* Dialog *)
 
 LOCAL INSTANCE Records
 LOCAL INSTANCE Messages
 LOCAL INSTANCE Channels
+
+Dialog == INSTANCE Dialog
 
 vars == <<local_files, local_state, local_transfers>>
 
@@ -76,6 +80,7 @@ ScanStart ==
    /\ LocalToRemote!Send([ message |-> "list_files" ])
    /\ local_state' = "running"
    /\ RemoteToLocal!UnchangedVars
+   /\ Dialog!UnchangedVars
    /\ UNCHANGED<<local_transfers, local_files>>
 
 (* Receive and process list_files-responses from the remote *)
@@ -91,13 +96,15 @@ ScanReceive ==
                           ]
                         ]
       /\ LocalToRemote!UnchangedVars
+      /\ Dialog!UnchangedVars
       /\ UNCHANGED<<local_transfers, local_state>>
 
 (* Receive and process end_list_files-response from the remote *)
 ScanFinished ==
-  /\ RemoteToLocal!Recv([ message |-> "end_list_files" ])
-  /\ LocalToRemote!UnchangedVars
-  /\ UNCHANGED<<local_state, local_files, local_transfers>>
+   /\ RemoteToLocal!Recv([ message |-> "end_list_files" ])
+   /\ LocalToRemote!UnchangedVars
+   /\ Dialog!UnchangedVars
+   /\ UNCHANGED<<local_state, local_files, local_transfers>>
 
 (* Are there free slots in the local_transfers structure? *)
 HasFreeTransferSlot == \E transfer_id \in TransferId: local_transfers[transfer_id] = <<>>
@@ -124,6 +131,7 @@ TransferStart ==
       /\ local_files' = [local_files EXCEPT ![file_id].transfer_id = transfer_id,
                                             ![file_id].state       = "transferring"]
       /\ RemoteToLocal!UnchangedVars
+      /\ Dialog!UnchangedVars
       /\ LocalToRemote!UnchangedVars
       /\ UNCHANGED<<local_state, chans>>
 
@@ -139,6 +147,7 @@ TransferRequest ==
                                  name    |-> transfer.remote_file.name,
                                  block   |-> transfer.request_next ])
          /\ RemoteToLocal!UnchangedVars
+         /\ Dialog!UnchangedVars
          /\ UNCHANGED<<local_files, local_state>>
 
 (* Receive a block of data from the remote *)
@@ -155,7 +164,13 @@ TransferReceive ==
                                          block   |-> block ])
                  /\ local_transfers' = [local_transfers EXCEPT ![transfer_id].blocks_received = @ + 1]
          /\ LocalToRemote!UnchangedVars
+         /\ Dialog!UnchangedVars
          /\ UNCHANGED<<local_state, local_files>>
+
+CheckDialogOpenPrime ==
+   IF \A file_id \in HasFileId: local_files'[file_id].state = "transferred"
+   THEN Dialog!Request
+   ELSE Dialog!UnchangedVars
 
 (* If the transfer is finished, release the transfer slot and mark the local file transferred *)
 TransferFinished ==
@@ -166,6 +181,7 @@ TransferFinished ==
       /\ local_transfers' = [local_transfers EXCEPT ![transfer_id] = <<>>]
       /\ local_files' = [local_files EXCEPT ![file_id].transfer_id = 0,
                                             ![file_id].state       = "transferred"]
+      /\ CheckDialogOpenPrime
       /\ RemoteToLocal!UnchangedVars
       /\ LocalToRemote!UnchangedVars
       /\ UNCHANGED<<local_state>>

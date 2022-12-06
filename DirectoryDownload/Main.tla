@@ -20,24 +20,29 @@ VARIABLES
    , local_transfers            (* On-going transfers *)
    , chan_local_to_remote       (* Channel from local to remote *)
    , chan_remote_to_local       (* Channel from remote to local *)
+   , dialog_state               (* State of the dialog *)
+   , dialog_request             (* Are we requesting to display the transfers complete- dialog? *)
 
 LOCAL INSTANCE Records
 LOCAL INSTANCE Util             (* Image *)
 
 Channels == INSTANCE Channels
 
+Dialog == INSTANCE Dialog
 Local == INSTANCE Local
 Remote == INSTANCE Remote
 
 vars == <<remote_files, remote_state, remote_send_queue,
           local_files, local_state, local_transfers,
-          chan_local_to_remote, chan_remote_to_local>>
+          chan_local_to_remote, chan_remote_to_local,
+          dialog_request, dialog_state>>
 
 TypeOK ==
    /\ Assert(Local!TypeOK, "Local!TypeOK")
    /\ Assert(Remote!TypeOK, "Remote!TypeOK")
 
 Init ==
+   /\ Dialog!Init
    /\ Remote!Init
    /\ Local!Init
    /\ Channels!InitChannels
@@ -49,6 +54,13 @@ LocalNext ==
 RemoteNext ==
    /\ Remote!Next
    /\ Local!UnchangedVars
+   /\ Dialog!UnchangedVars
+
+DialogNext ==
+   /\ Dialog!Next
+   /\ Local!UnchangedVars
+   /\ Remote!UnchangedVars
+   /\ Channels!UnchangedVarsChannels
 
 (* Does the local file state match the remote file state? *)
 AllFilesAreTransferred ==
@@ -64,22 +76,28 @@ Finished ==
    /\ AllFilesAreTransferred
    /\ Channels!QuiescentChannels
    /\ Remote!Quiescent
+   /\ Dialog!Quiescent
    /\ UNCHANGED<<vars>>
    /\ Assert(~ForceStateTraces, "Force state trace")
 
 Next ==
    \/ LocalNext
    \/ RemoteNext
+   \/ DialogNext
    \/ Finished                  (* stutter on finish, instead of deadlock *)
 
 Spec ==
    /\ Init
    /\ [][Next]_vars
-   /\ WF_<<local_transfers, remote_send_queue, chan_remote_to_local, chan_local_to_remote>>(Next)
+   /\ WF_<<local_transfers, remote_send_queue, chan_remote_to_local, chan_local_to_remote,
+           dialog_request, dialog_state>>(Next)
 
 (* After starting the system, at some point we end up having all files transferred *)
 EventuallyAllFilesAreTransferred ==
    Init => <> AllFilesAreTransferred
+
+ShowsDialogToUserWhenFilesAreTransferred ==
+   (\A file_id \in Local!HasFileId: local_files[file_id].state = "transferred") ~> (dialog_state = "open")
 
 (* Messages currently in the flight, for the benefit of tlsd *)
 AllMessages ==
