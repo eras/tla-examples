@@ -36,7 +36,6 @@ Close ==
 
 (* A request to open the dialog; this is used by other modules, not by the Next action *)
 Request ==
-   /\ dialog_request = FALSE
    /\ dialog_request' = TRUE
    /\ UNCHANGED<<dialog_state>>
 
