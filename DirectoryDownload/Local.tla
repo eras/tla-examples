@@ -153,19 +153,19 @@ TransferRequest ==
 (* Receive a block of data from the remote *)
 TransferReceive ==
    /\ \E transfer_id \in ActiveTransferId:
-      \E block \in BlockId:
-         LET transfer == local_transfers[transfer_id] IN
-         /\ transfer.state = "transferring"
-         /\ IF transfer.blocks_received = transfer.remote_file.size
-            THEN /\ local_transfers' = [local_transfers EXCEPT ![transfer_id].state = "finished"]
-                 /\ RemoteToLocal!UnchangedVars
-            ELSE /\ RemoteToLocal!Recv([ message |-> "file_block",
+      LET transfer == local_transfers[transfer_id] IN
+      /\ transfer.state = "transferring"
+      /\ IF transfer.blocks_received = transfer.remote_file.size
+         THEN /\ local_transfers' = [local_transfers EXCEPT ![transfer_id].state = "finished"]
+              /\ RemoteToLocal!UnchangedVars
+         ELSE \E block \in BlockId:
+                 /\ RemoteToLocal!Recv([ message |-> "file_block",
                                          name    |-> transfer.remote_file.name,
                                          block   |-> block ])
                  /\ local_transfers' = [local_transfers EXCEPT ![transfer_id].blocks_received = @ + 1]
-         /\ LocalToRemote!UnchangedVars
-         /\ Dialog!UnchangedVars
-         /\ UNCHANGED<<local_state, local_files>>
+      /\ LocalToRemote!UnchangedVars
+      /\ Dialog!UnchangedVars
+      /\ UNCHANGED<<local_state, local_files>>
 
 CheckDialogOpenPrime ==
    IF \A file_id \in HasFileId: local_files'[file_id].state = "transferred"
