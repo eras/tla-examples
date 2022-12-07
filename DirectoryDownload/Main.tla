@@ -89,8 +89,7 @@ Next ==
 Spec ==
    /\ Init
    /\ [][Next]_vars
-   /\ WF_<<local_transfers, remote_send_queue, chan_remote_to_local, chan_local_to_remote,
-           dialog_request, dialog_state>>(Next)
+   /\ WF_<<vars>>(Next)
 
 (* After starting the system, at some point we end up having all files transferred *)
 EventuallyAllFilesAreTransferred ==
