@@ -102,7 +102,7 @@ EventuallyAllFilesAreTransferred ==
    Init => <> (AllLocalFilesAreTransferredAsInRemote /\ NoTransfers)
 
 ShowsDialogToUserWhenFilesAreTransferred ==
-   AllLocalFileInTransferredState ~> (dialog_state = "open")
+   <>(dialog_state = "open")
 
 (* Messages currently in the flight, for the benefit of tlsd *)
 AllMessages ==
