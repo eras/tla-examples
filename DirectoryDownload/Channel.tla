@@ -23,6 +23,8 @@ UnchangedVars == UNCHANGED channel
 *)
 Null == <<>>
 
+ASSUME Null \notin Data
+
 Channel == [val: Data \cup {Null}, busy: BOOLEAN]
 
 TypeOK == channel \in Channel
