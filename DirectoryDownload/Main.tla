@@ -64,17 +64,22 @@ DialogNext ==
    /\ Channels!RemoteToLocal!UnchangedVars
 
 (* Does the local file state match the remote file state? *)
-AllFilesAreTransferred ==
+AllLocalFilesAreTransferredAsInRemote ==
    /\ \A remote_file \in Image(remote_files):
       \E file_id \in Local!HasFileId:
          /\ local_files[file_id].remote_file = remote_file
          /\ local_files[file_id].state = "transferred"
+
+AllLocalFileInTransferredState == (\A file_id \in Local!HasFileId: local_files[file_id].state = "transferred")
+
+NoTransfers ==
    /\ \A transfer_id \in TransferId:
       local_transfers[transfer_id] = <<>>
 
 (* Is everything transferred and queues empty? *)
 Finished ==
-   /\ AllFilesAreTransferred
+   /\ AllLocalFilesAreTransferredAsInRemote
+   /\ NoTransfers
    /\ Channels!QuiescentChannels
    /\ Remote!Quiescent
    /\ Dialog!Quiescent
@@ -94,10 +99,10 @@ Spec ==
 
 (* After starting the system, at some point we end up having all files transferred *)
 EventuallyAllFilesAreTransferred ==
-   Init => <> AllFilesAreTransferred
+   Init => <> (AllLocalFilesAreTransferredAsInRemote /\ NoTransfers)
 
 ShowsDialogToUserWhenFilesAreTransferred ==
-   (\A file_id \in Local!HasFileId: local_files[file_id].state = "transferred") ~> (dialog_state = "open")
+   AllLocalFileInTransferredState ~> (dialog_state = "open")
 
 (* Messages currently in the flight, for the benefit of tlsd *)
 AllMessages ==
