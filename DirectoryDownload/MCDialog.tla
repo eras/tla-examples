@@ -3,9 +3,9 @@
 --------------------------------------------------------------------------------
 VARIABLES
    dialog_state
-   , dialog_request
+   , chan_local_to_dialog
 
-vars == <<dialog_state, dialog_request>>
+vars == <<dialog_state, chan_local_to_dialog>>
 
 Dialog == INSTANCE Dialog
 

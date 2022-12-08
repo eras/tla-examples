@@ -18,6 +18,7 @@ VARIABLES
    , remote_send_queue          (* Blocks pending send *)
    , chan_local_to_remote       (* Channel from local to remote *)
    , chan_remote_to_local       (* Channel from remote to local *)
+   , chan_local_to_dialog       (* Used by Channels *)
 
 LOCAL INSTANCE Records
 LOCAL INSTANCE Messages

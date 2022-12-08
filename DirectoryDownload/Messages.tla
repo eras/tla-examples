@@ -33,6 +33,10 @@ RespondFileBlock ==
      name   : FileName,
      block  : BlockId ]
 
+(* Request a dialog to be shown *)
+RequestDialog ==
+   [ message : {"request_dialog"} ]
+
 (* All messages from local to remote *)
 MsgLocalToRemote ==
   UNION({
@@ -45,6 +49,11 @@ MsgRemoteToLocal ==
    UNION({
       RespondListFiles,
       RespondFileBlock
+   })
+
+MsgLocalToDialog ==
+   UNION({
+      RequestDialog
    })
 
 ================================================================================

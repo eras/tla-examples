@@ -19,7 +19,7 @@ VARIABLES
    , chan_local_to_remote       (* Channel from local to remote *)
    , chan_remote_to_local       (* Channel from remote to local *)
    , dialog_state               (* Dialog *)
-   , dialog_request             (* Dialog *)
+   , chan_local_to_dialog       (* Channel from local to dialog *)
 
 LOCAL INSTANCE Records
 LOCAL INSTANCE Messages

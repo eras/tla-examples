@@ -21,7 +21,7 @@ VARIABLES
    , chan_local_to_remote       (* Channel from local to remote *)
    , chan_remote_to_local       (* Channel from remote to local *)
    , dialog_state               (* State of the dialog *)
-   , dialog_request             (* Are we requesting to display the transfers complete- dialog? *)
+   , chan_local_to_dialog       (* Channel to request dialogs *)
 
 LOCAL INSTANCE Records
 LOCAL INSTANCE Util             (* Image *)
@@ -35,7 +35,7 @@ Remote == INSTANCE Remote
 vars == <<remote_files, remote_state, remote_send_queue,
           local_files, local_state, local_transfers,
           chan_local_to_remote, chan_remote_to_local,
-          dialog_request, dialog_state>>
+          chan_local_to_dialog, dialog_state>>
 
 TypeOK ==
    /\ Assert(Local!TypeOK, "Local!TypeOK")
@@ -60,7 +60,8 @@ DialogNext ==
    /\ Dialog!Next
    /\ Local!UnchangedVars
    /\ Remote!UnchangedVars
-   /\ Channels!UnchangedVarsChannels
+   /\ Channels!LocalToRemote!UnchangedVars
+   /\ Channels!RemoteToLocal!UnchangedVars
 
 (* Does the local file state match the remote file state? *)
 AllFilesAreTransferred ==
@@ -101,16 +102,18 @@ ShowsDialogToUserWhenFilesAreTransferred ==
 (* Messages currently in the flight, for the benefit of tlsd *)
 AllMessages ==
    UNION({{{<<"local", 1>>} \X {<<"remote", 1>>} \X Channels!LocalToRemote!Sending}
+        , {{<<"local", 1>>} \X {<<"dialog", 1>>} \X Channels!LocalToDialog!Sending}
         , {{<<"remote", 1>>} \X {<<"local", 1>>} \X Channels!RemoteToLocal!Sending}})
 
 (* An expression of some state, to display in the TLSD output *)
 State ==
    [ local |-> <<Local!State>>,
-     remote |-> <<Remote!State>> ]
+     remote |-> <<Remote!State>>,
+     dialog |-> <<Dialog!State>> ]
 
 (* TLSD output mapping *)
 AliasMessages ==
-   [lane_order_json |-> ToJson(<<"local", "remote">>),
+   [lane_order_json |-> ToJson(<<"dialog", "local", "remote">>),
     messages_json   |-> ToJson(AllMessages),
     state_json      |-> ToJson(State) ]
 
