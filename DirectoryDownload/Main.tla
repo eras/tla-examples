@@ -98,8 +98,8 @@ Spec ==
    /\ WF_<<vars>>(Next)
 
 (* After starting the system, at some point we end up having all files transferred *)
-EventuallyAllFilesAreTransferred ==
-   Init => <> (AllLocalFilesAreTransferredAsInRemote /\ NoTransfers)
+EventuallyAllFilesAreForeverTransferred ==
+   <>[](AllLocalFilesAreTransferredAsInRemote /\ NoTransfers)
 
 ShowsDialogToUserWhenFilesAreTransferred ==
    <>(dialog_state = "open")
