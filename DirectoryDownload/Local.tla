@@ -189,9 +189,13 @@ TransferFinished ==
 ----
 \* State description for TLSD
 State ==
-  [ files_ready |-> Cardinality({file_id \in FileId:
-                                 /\ local_files[file_id] # <<>>
-                                 /\ local_files[file_id].state = "transferred"}) ]
+  LET files_in_state(x) == {local_files[file_id].remote_file.name[2]:
+                            file_id \in {file_id \in FileId:
+                                         /\ local_files[file_id] # <<>>
+                                         /\ local_files[file_id].state = x}} IN
+  [ transferred      |-> files_in_state("transferred"),
+    waiting_transfer |-> files_in_state("waiting-transfer"),
+    transferring     |-> files_in_state("transferring") ]
 
 (* State *)
 
