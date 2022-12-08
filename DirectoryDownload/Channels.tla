@@ -25,9 +25,9 @@ RemoteToLocal == INSTANCE Channel WITH channel <- chan_remote_to_local, Data <- 
 
 (* Are all the channels empty? *)
 QuiescentChannels ==
-   /\ ~chan_local_to_remote.busy
-   /\ ~chan_local_to_dialog.busy
-   /\ ~chan_remote_to_local.busy
+   /\ ~LocalToRemote!Busy
+   /\ ~LocalToDialog!Busy
+   /\ ~RemoteToLocal!Busy
 
 UnchangedVarsChannels ==
    /\ LocalToRemote!UnchangedVars
