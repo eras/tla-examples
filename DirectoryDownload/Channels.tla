@@ -9,10 +9,13 @@ CONSTANTS
 VARIABLES
    chan_local_to_remote      (* Channel from local to remote *)
  , chan_remote_to_local      (* Channel from remote to local *)
+ , chan_local_to_dialog      (* Channel from local to dialog *)
 
 LOCAL INSTANCE Messages
 
-chans == <<chan_local_to_remote, chan_remote_to_local>>
+INSTANCE DialogChannel          (* LocalToDialog *)
+
+chans == <<chan_local_to_remote, chan_remote_to_local, chan_local_to_dialog>>
 
 LocalToRemote == INSTANCE Channel WITH channel <- chan_local_to_remote, Data <- MsgLocalToRemote
 RemoteToLocal == INSTANCE Channel WITH channel <- chan_remote_to_local, Data <- MsgRemoteToLocal
@@ -22,15 +25,18 @@ RemoteToLocal == INSTANCE Channel WITH channel <- chan_remote_to_local, Data <- 
 
 (* Are all the channels empty? *)
 QuiescentChannels ==
-   /\ ~chan_local_to_remote.busy
-   /\ ~chan_remote_to_local.busy
+   /\ ~LocalToRemote!Busy
+   /\ ~LocalToDialog!Busy
+   /\ ~RemoteToLocal!Busy
 
 UnchangedVarsChannels ==
    /\ LocalToRemote!UnchangedVars
+   /\ LocalToDialog!UnchangedVars
    /\ RemoteToLocal!UnchangedVars
 
 InitChannels ==
    /\ LocalToRemote!Init
    /\ RemoteToLocal!Init
+   /\ LocalToDialog!Init
 
 ================================================================================

@@ -18,10 +18,14 @@ VARIABLES
    , local_transfers            (* On-going local_transfers *)
    , chan_local_to_remote       (* Channel from local to remote *)
    , chan_remote_to_local       (* Channel from remote to local *)
+   , dialog_state               (* Dialog *)
+   , chan_local_to_dialog       (* Channel from local to dialog *)
 
 LOCAL INSTANCE Records
 LOCAL INSTANCE Messages
 LOCAL INSTANCE Channels
+
+Dialog == INSTANCE Dialog
 
 vars == <<local_files, local_state, local_transfers>>
 
@@ -76,6 +80,7 @@ ScanStart(OtherUnchanged) ==
    /\ LocalToRemote!Send([ message |-> "list_files" ])
    /\ local_state' = "running"
    /\ RemoteToLocal!UnchangedVars
+   /\ Dialog!UnchangedVars
    /\ UNCHANGED<<local_transfers, local_files>>
    /\ OtherUnchanged
 
@@ -92,15 +97,17 @@ ScanReceive(OtherUnchanged) ==
                           ]
                         ]
       /\ LocalToRemote!UnchangedVars
+      /\ Dialog!UnchangedVars
       /\ UNCHANGED<<local_transfers, local_state>>
       /\ OtherUnchanged
 
 (* Receive and process end_list_files-response from the remote *)
 ScanFinished(OtherUnchanged) ==
-  /\ RemoteToLocal!Recv([ message |-> "end_list_files" ])
-  /\ LocalToRemote!UnchangedVars
-  /\ UNCHANGED<<local_state, local_files, local_transfers>>
-  /\ OtherUnchanged
+   /\ RemoteToLocal!Recv([ message |-> "end_list_files" ])
+   /\ LocalToRemote!UnchangedVars
+   /\ Dialog!UnchangedVars
+   /\ UNCHANGED<<local_state, local_files, local_transfers>>
+   /\ OtherUnchanged
 
 (* Are there free slots in the local_transfers structure? *)
 HasFreeTransferSlot == \E transfer_id \in TransferId: local_transfers[transfer_id] = <<>>
@@ -127,6 +134,7 @@ TransferStart(OtherUnchanged) ==
       /\ local_files' = [local_files EXCEPT ![file_id].transfer_id = transfer_id,
                                             ![file_id].state       = "transferring"]
       /\ RemoteToLocal!UnchangedVars
+      /\ Dialog!UnchangedVars
       /\ LocalToRemote!UnchangedVars
       /\ UNCHANGED<<local_state, chans>>
       /\ OtherUnchanged
@@ -143,25 +151,32 @@ TransferRequest(OtherUnchanged) ==
                                  name    |-> transfer.remote_file.name,
                                  block   |-> transfer.request_next ])
          /\ RemoteToLocal!UnchangedVars
+         /\ Dialog!UnchangedVars
          /\ UNCHANGED<<local_files, local_state>>
          /\ OtherUnchanged
 
 (* Receive a block of data from the remote *)
 TransferReceive(OtherUnchanged) ==
    /\ \E transfer_id \in ActiveTransferId:
-      \E block \in BlockId:
-         LET transfer == local_transfers[transfer_id] IN
-         /\ transfer.state = "transferring"
-         /\ IF transfer.blocks_received = transfer.remote_file.size
-            THEN /\ local_transfers' = [local_transfers EXCEPT ![transfer_id].state = "finished"]
-                 /\ RemoteToLocal!UnchangedVars
-            ELSE /\ RemoteToLocal!Recv([ message |-> "file_block",
+      LET transfer == local_transfers[transfer_id] IN
+      /\ transfer.state = "transferring"
+      /\ IF transfer.blocks_received = transfer.remote_file.size
+         THEN /\ local_transfers' = [local_transfers EXCEPT ![transfer_id].state = "finished"]
+              /\ RemoteToLocal!UnchangedVars
+         ELSE \E block \in BlockId:
+                 /\ RemoteToLocal!Recv([ message |-> "file_block",
                                          name    |-> transfer.remote_file.name,
                                          block   |-> block ])
                  /\ local_transfers' = [local_transfers EXCEPT ![transfer_id].blocks_received = @ + 1]
-         /\ LocalToRemote!UnchangedVars
-         /\ UNCHANGED<<local_state, local_files>>
-         /\ OtherUnchanged
+      /\ LocalToRemote!UnchangedVars
+      /\ Dialog!UnchangedVars
+      /\ UNCHANGED<<local_state, local_files>>
+      /\ OtherUnchanged
+
+CheckDialogOpenPrime ==
+   IF \A file_id \in HasFileId: local_files'[file_id].state = "transferred"
+   THEN Dialog!Request
+   ELSE Dialog!UnchangedVars
 
 (* If the transfer is finished, release the transfer slot and mark the local file transferred *)
 TransferFinished(OtherUnchanged) ==
@@ -172,6 +187,7 @@ TransferFinished(OtherUnchanged) ==
       /\ local_transfers' = [local_transfers EXCEPT ![transfer_id] = <<>>]
       /\ local_files' = [local_files EXCEPT ![file_id].transfer_id = 0,
                                             ![file_id].state       = "transferred"]
+      /\ CheckDialogOpenPrime
       /\ RemoteToLocal!UnchangedVars
       /\ LocalToRemote!UnchangedVars
       /\ UNCHANGED<<local_state>>
@@ -180,9 +196,13 @@ TransferFinished(OtherUnchanged) ==
 ----
 \* State description for TLSD
 State ==
-  [ files_ready |-> Cardinality({file_id \in FileId:
-                                 /\ local_files[file_id] # <<>>
-                                 /\ local_files[file_id].state = "transferred"}) ]
+  LET files_in_state(x) == {local_files[file_id].remote_file.name[2]:
+                            file_id \in {file_id \in FileId:
+                                         /\ local_files[file_id] # <<>>
+                                         /\ local_files[file_id].state = x}} IN
+  [ transferred      |-> files_in_state("transferred"),
+    waiting_transfer |-> files_in_state("waiting-transfer"),
+    transferring     |-> files_in_state("transferring") ]
 
 (* State *)
 

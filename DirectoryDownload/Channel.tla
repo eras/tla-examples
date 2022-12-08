@@ -18,32 +18,35 @@ VARIABLE channel                (* Channel *)
 
 UnchangedVars == UNCHANGED channel
 
-(* When a channel is not busy, it has this value. Redundant really to
-   have the 'busy' flag at all, but maybe it makes things more clear
-*)
+(* When a channel is not busy, it has this value. *)
 Null == <<>>
 
-Channel == [val: Data \cup {Null}, busy: BOOLEAN]
+ASSUME Null \notin Data
+
+Channel == Data \cup {Null}
 
 TypeOK == channel \in Channel
 
+Busy ==
+   channel # Null
+
 Send(data) ==
    /\ Assert(data \in Data, <<"Sending invalid data", data, "while expecting", Data>>)
-   /\ \lnot channel.busy
-   /\ channel' = [val |-> data, busy |-> TRUE]
+   /\ \lnot Busy
+   /\ channel' = data
 
 Recv(data) ==
    /\ Assert(data \in Data, <<"Receiving invalid data", data, "while expecting", Data>>)
-   /\ channel.busy
-   /\ data = channel.val
-   /\ channel' = [val |-> Null, busy |-> FALSE]
+   /\ Busy
+   /\ data = channel
+   /\ channel' = Null
 
 Sending ==
-   IF channel.busy
-   THEN {channel.val}
+   IF Busy
+   THEN {channel}
    ELSE {}
 
 Init ==
-   channel = [val |-> Null, busy |-> FALSE]
+   channel = Null
 
 =============================================================================

@@ -1,0 +1,22 @@
+strict digraph DiskGraph {
+nodesep=0.35;
+subgraph cluster_graph {
+color="white";
+1819142951129813576 [label="/\\ dialog_request = FALSE\n/\\ dialog_state = \"closed\"",style = filled]
+1819142951129813576 -> -411286408815039078 [label="Dialog!Request",color="black",fontcolor="black"];
+-411286408815039078 [label="/\\ dialog_request = TRUE\n/\\ dialog_state = \"closed\""];
+-411286408815039078 -> -1622969588420790649 [label="Dialog!Open",color="black",fontcolor="black"];
+-1622969588420790649 [label="/\\ dialog_request = TRUE\n/\\ dialog_state = \"open\""];
+-1622969588420790649 -> 5933015438326775903 [label="Dialog!Accept",color="black",fontcolor="black"];
+5933015438326775903 [label="/\\ dialog_request = FALSE\n/\\ dialog_state = \"accepted\""];
+5933015438326775903 -> 1819142951129813576 [label="Dialog!Close",color="black",fontcolor="black"];
+5933015438326775903 -> 4861036945431934340 [label="Dialog!Request",color="black",fontcolor="black"];
+4861036945431934340 [label="/\\ dialog_request = TRUE\n/\\ dialog_state = \"accepted\""];
+4861036945431934340 -> -411286408815039078 [label="Dialog!Close",color="black",fontcolor="black"];
+{rank = same; 1819142951129813576;}
+{rank = same; -411286408815039078;}
+{rank = same; -1622969588420790649;}
+{rank = same; 5933015438326775903;}
+{rank = same; 4861036945431934340;}
+}
+}
