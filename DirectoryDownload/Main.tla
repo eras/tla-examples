@@ -76,6 +76,9 @@ NoTransfers ==
    /\ \A transfer_id \in TransferId:
       local_transfers[transfer_id] = <<>>
 
+OnceTransferredAlwaysTransferred ==
+   [](AllLocalFileInTransferredState => []AllLocalFileInTransferredState)
+
 (* Is everything transferred and queues empty? *)
 Finished ==
    /\ AllLocalFilesAreTransferredAsInRemote
