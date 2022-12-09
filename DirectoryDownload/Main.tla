@@ -79,6 +79,9 @@ NoTransfers ==
 OnceTransferredAlwaysTransferred ==
    [](AllLocalFileInTransferredState => []AllLocalFileInTransferredState)
 
+DialogNeverReopensAfterAccepting ==
+   []((dialog_state = "accepted") => []~(dialog_state = "open"))
+
 (* Is everything transferred and queues empty? *)
 Finished ==
    /\ AllLocalFilesAreTransferredAsInRemote
