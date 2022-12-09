@@ -105,7 +105,7 @@ Spec ==
 
 (* After starting the system, at some point we end up having all files transferred *)
 EventuallyAllFilesAreForeverTransferred ==
-   <>[](AllLocalFilesAreTransferredAsInRemote /\ NoTransfers)
+   Init => <>[](AllLocalFilesAreTransferredAsInRemote /\ NoTransfers)
 
 ShowsDialogToUserWhenFilesAreTransferred ==
    <>(dialog_state = "open")
