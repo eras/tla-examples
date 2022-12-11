@@ -1,5 +1,7 @@
 ---- MODULE LocalDialogChannels ------------------------------------------------
-(* Documentation *)
+(* The channels between Local and Dialog. This is just for getting some symmetry
+   with LocalRemoteChannels, and could be even useful should Dialog need a way
+   to communicate back. *)
 --------------------------------------------------------------------------------
 VARIABLES
    chan_local_to_dialog      (* Channel from local to dialog *)

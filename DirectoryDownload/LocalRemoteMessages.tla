@@ -1,5 +1,5 @@
 ---- MODULE LocalRemoteMessages ------------------------------------------------
-(* Documentation *)
+(* The messages Local can exchange with Remote *)
 --------------------------------------------------------------------------------
 
 CONSTANTS

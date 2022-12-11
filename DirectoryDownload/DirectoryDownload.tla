@@ -1,5 +1,5 @@
 ---- MODULE DirectoryDownload --------------------------------------------------
-(* Documentation *)
+(* First stage prototype for the multi-process version of the same *)
 --------------------------------------------------------------------------------
 
 LOCAL INSTANCE Naturals

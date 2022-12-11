@@ -1,5 +1,5 @@
 ---- MODULE LocalDialogMessages ------------------------------------------------
-(* Documentation *)
+(* The messages Local can send to Dialog *)
 --------------------------------------------------------------------------------
 (* Request a dialog to be shown *)
 RequestDialog ==
