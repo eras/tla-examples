@@ -1,5 +1,5 @@
----- MODULE Channels -----------------------------------------------------------
-(* Lists all channels of the system: one from local to remote and one back *)
+---- MODULE LocalRemoteChannels ------------------------------------------------
+(* The channels between Local and Remote *)
 --------------------------------------------------------------------------------
 CONSTANTS
    NumFiles                 \* Needed for Messages
@@ -9,13 +9,10 @@ CONSTANTS
 VARIABLES
    chan_local_to_remote      (* Channel from local to remote *)
  , chan_remote_to_local      (* Channel from remote to local *)
- , chan_local_to_dialog      (* Channel from local to dialog *)
 
-LOCAL INSTANCE Messages
+LOCAL INSTANCE LocalRemoteMessages
 
-INSTANCE DialogChannel          (* LocalToDialog *)
-
-chans == <<chan_local_to_remote, chan_remote_to_local, chan_local_to_dialog>>
+chans == <<chan_local_to_remote, chan_remote_to_local>>
 
 LocalToRemote == INSTANCE Channel WITH channel <- chan_local_to_remote, Data <- MsgLocalToRemote
 RemoteToLocal == INSTANCE Channel WITH channel <- chan_remote_to_local, Data <- MsgRemoteToLocal
@@ -26,17 +23,14 @@ RemoteToLocal == INSTANCE Channel WITH channel <- chan_remote_to_local, Data <- 
 (* Are all the channels empty? *)
 QuiescentChannels ==
    /\ ~LocalToRemote!Busy
-   /\ ~LocalToDialog!Busy
    /\ ~RemoteToLocal!Busy
 
 UnchangedVarsChannels ==
    /\ LocalToRemote!UnchangedVars
-   /\ LocalToDialog!UnchangedVars
    /\ RemoteToLocal!UnchangedVars
 
 InitChannels ==
    /\ LocalToRemote!Init
    /\ RemoteToLocal!Init
-   /\ LocalToDialog!Init
 
 ================================================================================

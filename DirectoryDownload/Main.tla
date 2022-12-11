@@ -1,5 +1,12 @@
 ---- MODULE Main ---------------------------------------------------------------
-(* Documentation *)
+(* The model that ties everything together:
+   Local is the process that attempts to communicate with a Remote to transfer files
+   Remote is the remote service that responds to those queries
+   Dialog is a dialog that can be shown to user once the transfer is complete
+
+   and then there are channels used for communication and reducing coupling:
+   LocalRemoteChannels (two chanels) and LocalDialogChannels (one channel)
+*)
 --------------------------------------------------------------------------------
 LOCAL INSTANCE Json             (* ToJson *)
 LOCAL INSTANCE TLC
@@ -23,10 +30,11 @@ VARIABLES
    , dialog_state               (* State of the dialog *)
    , chan_local_to_dialog       (* Channel to request dialogs *)
 
-LOCAL INSTANCE Records
+LOCAL INSTANCE LocalRemoteTypes
 LOCAL INSTANCE Util             (* Image *)
 
-Channels == INSTANCE Channels
+LocalRemoteChannels == INSTANCE LocalRemoteChannels
+LocalDialogChannels == INSTANCE LocalDialogChannels
 
 Dialog == INSTANCE Dialog
 Local == INSTANCE Local
@@ -45,7 +53,8 @@ Init ==
    /\ Dialog!Init
    /\ Remote!Init
    /\ Local!Init
-   /\ Channels!InitChannels
+   /\ LocalRemoteChannels!InitChannels
+   /\ LocalDialogChannels!InitChannels
 
 (* Does the local file state match the remote file state? *)
 AllLocalFilesAreTransferredAsInRemote ==
@@ -60,11 +69,18 @@ NoTransfers ==
    /\ \A transfer_id \in TransferId:
       local_transfers[transfer_id] = <<>>
 
+OnceTransferredAlwaysTransferred ==
+   [](AllLocalFileInTransferredState => []AllLocalFileInTransferredState)
+
+DialogNeverReopensAfterAccepting ==
+   []((dialog_state = "accepted") => []~(dialog_state = "open"))
+
 (* Is everything transferred and queues empty? *)
 Finished ==
    /\ AllLocalFilesAreTransferredAsInRemote
    /\ NoTransfers
-   /\ Channels!QuiescentChannels
+   /\ LocalRemoteChannels!QuiescentChannels
+   /\ LocalDialogChannels!QuiescentChannels
    /\ Remote!Quiescent
    /\ Dialog!Quiescent
    /\ UNCHANGED<<vars>>
@@ -84,8 +100,7 @@ Next ==
    \/ Remote!HandleSendQueue(Local!UnchangedVars /\ Dialog!UnchangedVars)
    \/ Dialog!Next(/\ Local!UnchangedVars
                   /\ Remote!UnchangedVars
-                  /\ Channels!LocalToRemote!UnchangedVars
-                  /\ Channels!RemoteToLocal!UnchangedVars)
+                  /\ LocalRemoteChannels!UnchangedVarsChannels)
    \/ Finished                  (* stutter on finish, instead of deadlock *)
 
 Spec ==
@@ -94,17 +109,17 @@ Spec ==
    /\ WF_<<vars>>(Next)
 
 (* After starting the system, at some point we end up having all files transferred *)
-EventuallyAllFilesAreTransferred ==
-   Init => <> (AllLocalFilesAreTransferredAsInRemote /\ NoTransfers)
+EventuallyAllFilesAreForeverTransferred ==
+   <>[](AllLocalFilesAreTransferredAsInRemote /\ NoTransfers)
 
 ShowsDialogToUserWhenFilesAreTransferred ==
-   AllLocalFileInTransferredState ~> (dialog_state = "open")
+   <>(dialog_state = "open")
 
 (* Messages currently in the flight, for the benefit of tlsd *)
 AllMessages ==
-   UNION({{{<<"local", 1>>} \X {<<"remote", 1>>} \X Channels!LocalToRemote!Sending}
-        , {{<<"local", 1>>} \X {<<"dialog", 1>>} \X Channels!LocalToDialog!Sending}
-        , {{<<"remote", 1>>} \X {<<"local", 1>>} \X Channels!RemoteToLocal!Sending}})
+   UNION({{{<<"local", 1>>} \X {<<"remote", 1>>} \X LocalRemoteChannels!LocalToRemote!Sending}
+        , {{<<"local", 1>>} \X {<<"dialog", 1>>} \X LocalDialogChannels!LocalToDialog!Sending}
+        , {{<<"remote", 1>>} \X {<<"local", 1>>} \X LocalRemoteChannels!RemoteToLocal!Sending}})
 
 (* An expression of some state, to display in the TLSD output *)
 State ==

@@ -1,18 +1,15 @@
 ---- MODULE Dialog -------------------------------------------------------------
-(* Documentation *)
+(* Implements a simple dialog that can be requested to open, and one that the
+   user then can accept, after which the dialog is closed (and could be opened
+   again) *)
 --------------------------------------------------------------------------------
-CONSTANTS
-   NumFiles                 \* Needed for DialogChannel
-   , MaxFileSize            \* Needed for DialogChannel
-   , MaxConcurrentTransfers \* Needed for DialogChannel
-
 VARIABLES
    dialog_state                 (* state of the dialog *)
    , chan_local_to_dialog       (* channel to request dialog to be opened *)
 
 vars == <<dialog_state, chan_local_to_dialog>>
 
-LOCAL INSTANCE Messages
+LOCAL INSTANCE LocalDialogMessages
 LOCAL INSTANCE DialogChannel
 
 (* Used from Main to express this module does not modify variables *)

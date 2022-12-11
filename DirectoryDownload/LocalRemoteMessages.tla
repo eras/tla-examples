@@ -1,13 +1,13 @@
----- MODULE Messages -----------------------------------------------------------
-(* Documentation *)
+---- MODULE LocalRemoteMessages ------------------------------------------------
+(* The messages Local can exchange with Remote *)
 --------------------------------------------------------------------------------
 
 CONSTANTS
-   NumFiles                 \* Needed for Records
-   , MaxFileSize            \* Needed for Records
-   , MaxConcurrentTransfers \* Needed for Records
+   NumFiles                 \* Needed for LocalRemoteTypes
+   , MaxFileSize            \* Needed for LocalRemoteTypes
+   , MaxConcurrentTransfers \* Needed for LocalRemoteTypes
 
-LOCAL INSTANCE Records
+LOCAL INSTANCE LocalRemoteTypes
 
 (* Request a list of files from the remote *)
 RequestListFiles ==
@@ -33,10 +33,6 @@ RespondFileBlock ==
      name   : FileName,
      block  : BlockId ]
 
-(* Request a dialog to be shown *)
-RequestDialog ==
-   [ message : {"request_dialog"} ]
-
 (* All messages from local to remote *)
 MsgLocalToRemote ==
   UNION({
@@ -49,11 +45,6 @@ MsgRemoteToLocal ==
    UNION({
       RespondListFiles,
       RespondFileBlock
-   })
-
-MsgLocalToDialog ==
-   UNION({
-      RequestDialog
    })
 
 ================================================================================

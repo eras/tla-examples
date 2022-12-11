@@ -1,5 +1,5 @@
----- MODULE Records ------------------------------------------------------------
-(* Documentation *)
+---- MODULE LocalRemoteTypes ---------------------------------------------------
+(* Some useful types that are used by both Local and Remote *)
 --------------------------------------------------------------------------------
 LOCAL INSTANCE Naturals
 

@@ -1,15 +1,10 @@
 ---- MODULE DialogChannel ------------------------------------------------------
-(* Documentation *)
+(* The channel for requesting dialog to be opened *)
 --------------------------------------------------------------------------------
-CONSTANTS
-   NumFiles                 \* Needed for Messages
-   , MaxFileSize            \* Needed for Messages
-   , MaxConcurrentTransfers \* Needed for Messages
-
 VARIABLES
    chan_local_to_dialog         (* Channel from local to dialog *)
 
-LOCAL INSTANCE Messages
+LOCAL INSTANCE LocalDialogMessages
 
 LocalToDialog == INSTANCE Channel WITH channel <- chan_local_to_dialog, Data <- MsgLocalToDialog
 

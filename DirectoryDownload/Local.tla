@@ -1,5 +1,6 @@
 ---- MODULE Local --------------------------------------------------------------
-(* Documentation *)
+(* Local end of the system that requests the list of files from Remote and then
+   transfers each of the files in the response list. *)
 --------------------------------------------------------------------------------
 
 LOCAL INSTANCE Naturals
@@ -21,9 +22,10 @@ VARIABLES
    , dialog_state               (* Dialog *)
    , chan_local_to_dialog       (* Channel from local to dialog *)
 
-LOCAL INSTANCE Records
-LOCAL INSTANCE Messages
-LOCAL INSTANCE Channels
+LOCAL INSTANCE LocalRemoteTypes
+LOCAL INSTANCE LocalRemoteMessages
+LOCAL INSTANCE LocalDialogMessages
+LOCAL INSTANCE LocalRemoteChannels
 
 Dialog == INSTANCE Dialog
 

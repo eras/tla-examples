@@ -1,5 +1,5 @@
 ---- MODULE MCDialog -----------------------------------------------------------
-(* Documentation *)
+(* A Model Checking version of Dialog; creates a nice state diagram *)
 --------------------------------------------------------------------------------
 VARIABLES
    dialog_state
@@ -7,9 +7,12 @@ VARIABLES
 
 vars == <<dialog_state, chan_local_to_dialog>>
 
+LOCAL INSTANCE DialogChannel
 Dialog == INSTANCE Dialog
 
-Init == Dialog!Init
+Init ==
+   /\ Dialog!Init
+   /\ LocalToDialog!Init
 
 Next ==
    \/ Dialog!Open

@@ -7,9 +7,9 @@ LOCAL INSTANCE TLC
 LOCAL INSTANCE Sequences
 
 CONSTANTS
-   NumFiles                     (* Used by Records *)
-   , MaxFileSize                (* Used by Records *)
-   , MaxConcurrentTransfers     (* Used by Records *)
+   NumFiles                     (* Used by LocalRemoteTypes *)
+   , MaxFileSize                (* Used by LocalRemoteTypes *)
+   , MaxConcurrentTransfers     (* Used by LocalRemoteTypes *)
    , MaxSendQueue               (* Maximum number of transfers we can queue *)
 
 VARIABLES
@@ -18,11 +18,10 @@ VARIABLES
    , remote_send_queue          (* Blocks pending send *)
    , chan_local_to_remote       (* Channel from local to remote *)
    , chan_remote_to_local       (* Channel from remote to local *)
-   , chan_local_to_dialog       (* Used by Channels *)
 
-LOCAL INSTANCE Records
-LOCAL INSTANCE Messages
-LOCAL INSTANCE Channels
+LOCAL INSTANCE LocalRemoteTypes
+LOCAL INSTANCE LocalRemoteMessages
+LOCAL INSTANCE LocalRemoteChannels
 LOCAL INSTANCE Util             (* SeqOfSet, SeqRemoveIndex *)
 
 vars == <<remote_send_queue, remote_state, remote_files>>

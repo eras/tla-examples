@@ -1,5 +1,5 @@
 ---- MODULE Util ---------------------------------------------------------------
-(* Documentation *)
+(* Utility functions *)
 --------------------------------------------------------------------------------
 LOCAL INSTANCE Sequences
 LOCAL INSTANCE Naturals
