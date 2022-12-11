@@ -23,10 +23,11 @@ VARIABLES
    , dialog_state               (* State of the dialog *)
    , chan_local_to_dialog       (* Channel to request dialogs *)
 
-LOCAL INSTANCE Records
+LOCAL INSTANCE LocalRemoteTypes
 LOCAL INSTANCE Util             (* Image *)
 
-Channels == INSTANCE Channels
+LocalRemoteChannels == INSTANCE LocalRemoteChannels
+LocalDialogChannels == INSTANCE LocalDialogChannels
 
 Dialog == INSTANCE Dialog
 Local == INSTANCE Local
@@ -45,7 +46,8 @@ Init ==
    /\ Dialog!Init
    /\ Remote!Init
    /\ Local!Init
-   /\ Channels!InitChannels
+   /\ LocalRemoteChannels!InitChannels
+   /\ LocalDialogChannels!InitChannels
 
 LocalNext ==
    /\ Local!Next
@@ -60,8 +62,7 @@ DialogNext ==
    /\ Dialog!Next
    /\ Local!UnchangedVars
    /\ Remote!UnchangedVars
-   /\ Channels!LocalToRemote!UnchangedVars
-   /\ Channels!RemoteToLocal!UnchangedVars
+   /\ LocalRemoteChannels!UnchangedVarsChannels
 
 (* Does the local file state match the remote file state? *)
 AllLocalFilesAreTransferredAsInRemote ==
@@ -86,7 +87,8 @@ DialogNeverReopensAfterAccepting ==
 Finished ==
    /\ AllLocalFilesAreTransferredAsInRemote
    /\ NoTransfers
-   /\ Channels!QuiescentChannels
+   /\ LocalRemoteChannels!QuiescentChannels
+   /\ LocalDialogChannels!QuiescentChannels
    /\ Remote!Quiescent
    /\ Dialog!Quiescent
    /\ UNCHANGED<<vars>>
@@ -112,9 +114,9 @@ ShowsDialogToUserWhenFilesAreTransferred ==
 
 (* Messages currently in the flight, for the benefit of tlsd *)
 AllMessages ==
-   UNION({{{<<"local", 1>>} \X {<<"remote", 1>>} \X Channels!LocalToRemote!Sending}
-        , {{<<"local", 1>>} \X {<<"dialog", 1>>} \X Channels!LocalToDialog!Sending}
-        , {{<<"remote", 1>>} \X {<<"local", 1>>} \X Channels!RemoteToLocal!Sending}})
+   UNION({{{<<"local", 1>>} \X {<<"remote", 1>>} \X LocalRemoteChannels!LocalToRemote!Sending}
+        , {{<<"local", 1>>} \X {<<"dialog", 1>>} \X LocalDialogChannels!LocalToDialog!Sending}
+        , {{<<"remote", 1>>} \X {<<"local", 1>>} \X LocalRemoteChannels!RemoteToLocal!Sending}})
 
 (* An expression of some state, to display in the TLSD output *)
 State ==

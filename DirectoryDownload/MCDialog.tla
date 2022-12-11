@@ -1,11 +1,6 @@
 ---- MODULE MCDialog -----------------------------------------------------------
 (* Documentation *)
 --------------------------------------------------------------------------------
-CONSTANTS
-   NumFiles                 \* Needed for Messages
-   , MaxFileSize            \* Needed for Messages
-   , MaxConcurrentTransfers \* Needed for Messages
-
 VARIABLES
    dialog_state
    , chan_local_to_dialog
