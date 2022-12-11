@@ -1,5 +1,5 @@
 ---- MODULE MCDialog -----------------------------------------------------------
-(* Documentation *)
+(* A Model Checking version of Dialog; creates a nice state diagram *)
 --------------------------------------------------------------------------------
 VARIABLES
    dialog_state

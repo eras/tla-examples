@@ -1,5 +1,7 @@
 ---- MODULE Dialog -------------------------------------------------------------
-(* Documentation *)
+(* Implements a simple dialog that can be requested to open, and one that the
+   user then can accept, after which the dialog is closed (and could be opened
+   again) *)
 --------------------------------------------------------------------------------
 VARIABLES
    dialog_state                 (* state of the dialog *)

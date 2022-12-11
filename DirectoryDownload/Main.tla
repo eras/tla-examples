@@ -1,5 +1,12 @@
 ---- MODULE Main ---------------------------------------------------------------
-(* Documentation *)
+(* The model that ties everything together:
+   Local is the process that attempts to communicate with a Remote to transfer files
+   Remote is the remote service that responds to those queries
+   Dialog is a dialog that can be shown to user once the transfer is complete
+
+   and then there are channels used for communication and reducing coupling:
+   LocalRemoteChannels (two chanels) and LocalDialogChannels (one channel)
+*)
 --------------------------------------------------------------------------------
 LOCAL INSTANCE Json             (* ToJson *)
 LOCAL INSTANCE TLC

@@ -1,5 +1,6 @@
 ---- MODULE Local --------------------------------------------------------------
-(* Documentation *)
+(* Local end of the system that requests the list of files from Remote and then
+   transfers each of the files in the response list. *)
 --------------------------------------------------------------------------------
 
 LOCAL INSTANCE Naturals

@@ -1,5 +1,5 @@
 ---- MODULE LocalRemoteChannels ------------------------------------------------
-(* Lists all channels of the system: one from local to remote and one back *)
+(* The channels between Local and Remote *)
 --------------------------------------------------------------------------------
 CONSTANTS
    NumFiles                 \* Needed for Messages

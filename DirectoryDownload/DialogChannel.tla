@@ -1,5 +1,5 @@
 ---- MODULE DialogChannel ------------------------------------------------------
-(* Documentation *)
+(* The channel for requesting dialog to be opened *)
 --------------------------------------------------------------------------------
 VARIABLES
    chan_local_to_dialog         (* Channel from local to dialog *)
