@@ -1,3 +1,6 @@
+This example has been copied from https://github.com/tlaplus/Examples which is under the
+MIT license: https://github.com/tlaplus/Examples/blob/master/LICENSE.md
+
 There are two specifications:
 
 DieHard
